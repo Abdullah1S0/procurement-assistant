@@ -1,5 +1,6 @@
 """Static description of the `purchases` collection, shared by the prompt and the `/api/schema` endpoint."""
-from typing import TypedDict
+import re
+from typing import Literal, TypedDict
 
 
 class FieldInfo(TypedDict):
@@ -68,3 +69,63 @@ LOOKUP_FIELDS: tuple[str, ...] = (
 def schema_for_prompt() -> str:
     """Compact one-line-per-field schema used inside the system prompt."""
     return "\n".join(f"- {f['name']} ({f['type']}){': ' + f['notes'] if f['notes'] else ''}" for f in FIELDS)
+
+
+# Dataset-level facts (see data/DATA_SCHEMA.md), used to answer meta-questions about the data
+# itself ("what date range do you have?") without running a query.
+DATASET_META = {
+    "date_start": "2012-07-02",
+    "date_end": "2015-06-30",
+    "fiscal_years": {"en": "2012-13 to 2014-15", "ar": "2012-13 إلى 2014-15"},
+    "total_docs": 346_018,
+}
+
+
+def meta_reply(language: Literal["en", "ar"]) -> str:
+    """Canned, factual answer to "what data do you have / what date range / what fields" questions,
+    built from the known dataset metadata above (no LLM call, no query)."""
+    m = DATASET_META
+    if language == "ar":
+        return (
+            f"البيانات المتوفرة هي سجلات شراء لولاية كاليفورنيا، من {m['date_start']} إلى {m['date_end']} "
+            f"(السنوات المالية {m['fiscal_years']['ar']}) — {m['total_docs']:,} سطر شراء (كل سطر = بند واحد ضمن طلب شراء). "
+            "تشمل الحقول: الجهة الحكومية، المورد، اسم/وصف الصنف، الكمية والسعر والإجمالي، تاريخ الإنشاء، نوع ووسيلة "
+            "الشراء، فئة UNSPSC، وأعلام مثل المنشآت الصغيرة وبطاقة CalCard. مثال على سؤال يمكنك طرحه: "
+            '"ما هو الربع الأعلى إنفاقاً؟"'
+        )
+    return (
+        f"The data covers California state purchases from {m['date_start']} to {m['date_end']} "
+        f"(fiscal years {m['fiscal_years']['en']}) — {m['total_docs']:,} purchase line items (each row is one line "
+        "within a purchase order). Fields include department, supplier, item name/description, quantity/unit "
+        "price/total, creation date, acquisition type & method, UNSPSC category, and flags like small-business "
+        "and CalCard. Try asking, e.g. \"Which quarter had the highest spending?\""
+    )
+
+
+# Heuristic safety net: used only when the forced-tool-call retry (generate_query/plan) also
+# fails, to decide whether to answer with `meta_reply()` or a generic "please rephrase" message,
+# without ever showing the model's own (possibly hallucinated) text. Deliberately loose /
+# typo-tolerant - a false negative just falls through to the safe generic message, never to
+# fabricated content.
+_META_HINTS = re.compile(
+    r"date range|time period|what (data|fields|columns|information)|which fields|coverage|"
+    r"sample (row|document)|what.*look like|"
+    r"تاريخ|حقول|اعمد|أعمد|عمود|صفوف|صف واحد|اي بيانات|أي بيانات|وش البيانات|عينة|نموذج",
+    re.IGNORECASE,
+)
+# Within a meta question, these additionally ask to *see* real rows/columns (not just coverage).
+_SAMPLE_ROWS_HINTS = re.compile(
+    r"\brows?\b|\bcolumns?\b|sample (row|document)|example (row|document)|what.*look like|"
+    r"صفوف|صف واحد|اعمد|أعمد|عمود|عينة|نموذج",
+    re.IGNORECASE,
+)
+
+
+def looks_like_meta_question(text: str) -> bool:
+    """True if `text` reads as a question about the dataset itself (coverage, fields, shape)."""
+    return bool(_META_HINTS.search(text or ""))
+
+
+def wants_sample_rows(text: str) -> bool:
+    """True if a meta-question is specifically asking to see example rows/columns."""
+    return bool(_SAMPLE_ROWS_HINTS.search(text or ""))

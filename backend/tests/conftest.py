@@ -33,8 +33,10 @@ def collection(monkeypatch: pytest.MonkeyPatch) -> mongomock.Collection:
     ])
     import app.agent.nodes.execute as ex
     import app.agent.nodes.lookup as lk
+    import app.db.client as db_client
     monkeypatch.setattr(ex, "get_collection", lambda: col)
     monkeypatch.setattr(lk, "get_collection", lambda: col)
+    monkeypatch.setattr(db_client, "get_collection", lambda: col)  # used by sample_documents()
     return col
 
 

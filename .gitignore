@@ -6,6 +6,8 @@ data/*.zip
 mongodb/
 mongo-data/
 *.mongod.log*
+backend-uvicorn.log
+frontend-vite.log
 
 # local Claude Code settings (machine-specific)
 .claude/settings.local.json

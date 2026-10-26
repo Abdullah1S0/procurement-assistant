@@ -87,8 +87,13 @@ UNDERSTAND_SYSTEM = """You are the router of a procurement-data assistant. The d
 (line items, FY2012-13 to FY2014-15): spend, orders, departments, suppliers, items, acquisition types/methods, UNSPSC \
 segments, CalCard, small business / DVBE flags, dates.
 Classify the latest user message:
-- data_question: a new question answerable from that data.
+- data_question: a new question answerable from that data — a specific computed result (totals, rankings, breakdowns, \
+filters, counts).
 - follow_up: depends on the previous turns ("and in 2015?", "break that down by department", "what about IT goods?").
+- meta_question: asks ABOUT the dataset itself rather than for a computed answer FROM it — its date/coverage range \
+("from what date to what date is your data?", "ما هي الفترة التي تغطيها البيانات؟"), how many records/fields it has, \
+what fields/categories/columns exist, "what data do you have", "what can I ask about this data". Leave \
+`standalone_question` and `reply` empty for this intent; a canned factual answer is used instead.
 - chit_chat: greetings, thanks, "what can you do".
 - out_of_scope: anything else (weather, coding, other datasets, future predictions).
 For data_question/follow_up write `standalone_question`: a complete, self-contained English question that keeps every filter \

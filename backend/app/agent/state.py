@@ -6,7 +6,7 @@ from typing import Annotated, Any, Literal, TypedDict
 
 from langchain_core.messages import BaseMessage
 
-Intent = Literal["data_question", "follow_up", "chit_chat", "out_of_scope"]
+Intent = Literal["data_question", "follow_up", "chit_chat", "out_of_scope", "meta_question"]
 
 
 class StepResult(TypedDict, total=False):
@@ -47,6 +47,9 @@ class AgentState(TypedDict, total=False):
     gen_messages: list[BaseMessage]
     candidate: dict[str, Any] | None  # {"raw": str, "chart": {...}}
     pipeline: list[dict[str, Any]] | None  # validated pipeline for the current step
+    # Set when the model refuses a forced tool call even after an auto-tool_choice retry; its
+    # text becomes the final answer directly, skipping validate/execute/answer's own LLM call.
+    fallback_answer: str | None
     error: str | None
     retries: int
     lookups: int

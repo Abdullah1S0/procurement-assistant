@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from app.agent.nodes.common import compact_json, traced
+from app.agent.nodes.common import compact_json, safe_tool_failure_reply, traced
 from app.agent.prompts import GENERATE_SYSTEM
 from app.agent.state import AgentState
 from app.agent.tools import TOOLS
-from app.llm import get_llm, invoke_with_backoff
+from app.llm import get_llm, invoke_with_backoff, tool_use_failed_text
 
 MAX_LOOKUPS = 3
 
@@ -32,8 +32,21 @@ def generate_query(state: AgentState) -> dict:
         messages = [SystemMessage(GENERATE_SYSTEM), HumanMessage(_step_prompt(state))]
     lookups = state.get("lookups", 0)
     tool_choice = "submit_pipeline" if lookups >= MAX_LOOKUPS else "required"
-    llm = get_llm().bind_tools(TOOLS, tool_choice=tool_choice)
-    ai: AIMessage = invoke_with_backoff(llm, messages)
+    try:
+        ai: AIMessage = invoke_with_backoff(get_llm().bind_tools(TOOLS, tool_choice=tool_choice), messages)
+    except Exception as exc:  # noqa: BLE001
+        failed_text = tool_use_failed_text(exc)
+        if failed_text is None:
+            raise
+        # Groq rejected the forced tool call (model answered in plain text); retry once with
+        # tool_choice="auto", and fall back to that text as the final answer if it still refuses.
+        ai = invoke_with_backoff(get_llm().bind_tools(TOOLS, tool_choice="auto"), messages)
+        if not ai.tool_calls:
+            text = ai.content if isinstance(ai.content, str) and ai.content.strip() else failed_text
+            question = state.get("standalone_question", state.get("question", ""))
+            safe_text = safe_tool_failure_reply(question, state.get("language", "en"), text or "")
+            return {"gen_messages": messages, "candidate": None, "fallback_answer": safe_text,
+                    "_event": {"action": "fallback_text", "safe": True}}
     messages.append(ai)
 
     submit = next((c for c in ai.tool_calls if c["name"] == "submit_pipeline"), None)
@@ -52,5 +65,8 @@ def generate_query(state: AgentState) -> dict:
 
 
 def route_after_generate(state: AgentState) -> str:
-    """Lookup tool call -> `schema_lookup`; submitted pipeline -> `validate`."""
+    """Fallback text (forced tool call refused twice) -> answer; lookup call -> schema_lookup;
+    submitted pipeline -> validate."""
+    if state.get("fallback_answer"):
+        return "answer"
     return "validate" if state.get("candidate") else "schema_lookup"

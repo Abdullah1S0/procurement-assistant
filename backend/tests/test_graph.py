@@ -84,6 +84,23 @@ def test_follow_up_uses_memory(collection, fake_llm) -> None:
     assert len(state["turns"]) == 2 and state["steps"][0]["results"] == [{"orders": 1}]
 
 
+def test_meta_question_skips_query(collection, fake_llm) -> None:
+    fake_llm([Understanding(intent="meta_question")])
+    state, nodes = _run(build_graph(InMemorySaver()), "من تاريخ كم الى كم بياناتك؟")
+    assert nodes == ["understand", "answer"]
+    assert state["steps"] == []
+    assert "2012-07-02" in state["answer"] and "2015-06-30" in state["answer"]
+
+
+def test_meta_question_with_sample_rows_uses_real_documents(collection, fake_llm) -> None:
+    fake_llm([Understanding(intent="meta_question")])
+    state, nodes = _run(build_graph(InMemorySaver()), "وش الصفوف والاعمده الموخوده؟")
+    assert nodes == ["understand", "answer"]
+    assert state["steps"] == []
+    # a real department name from the mongomock fixture, not an invented one
+    assert "Corrections and Rehabilitation, Department of" in state["answer"]
+
+
 def test_distinct_values_tool(collection) -> None:
     out = run_distinct_values(collection, "department_name", "correction")
     assert out["values"][0]["value"] == "Corrections and Rehabilitation, Department of"

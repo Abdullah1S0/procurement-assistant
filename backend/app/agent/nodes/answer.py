@@ -1,16 +1,21 @@
 """`answer` node: natural-language answer + chart suggestion; also writes conversation memory."""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agent.charts import suggest_chart
-from app.agent.nodes.common import compact_json, traced
+from app.agent.nodes.common import clean_text, compact_json, traced
 from app.agent.prompts import ANSWER_SYSTEM
 from app.agent.state import AgentState, Turn
-from app.db.serialize import humanize_number, round_floats
+from app.db.client import sample_documents
+from app.db.schema import wants_sample_rows
+from app.db.serialize import humanize_number, round_floats, to_jsonable
 from app.llm import get_llm, invoke_with_backoff
+
+log = logging.getLogger("agent")
 
 FALLBACK_REPLY = {
     "en": "I can answer questions about California state purchases (FY2012-13 to FY2014-15), e.g. "
@@ -18,6 +23,25 @@ FALLBACK_REPLY = {
     "ar": "أستطيع الإجابة عن أسئلة حول مشتريات ولاية كاليفورنيا (السنوات المالية 2012-2015)، مثل: "
           "\"ما هو الربع الأعلى إنفاقاً؟\"",
 }
+
+# A readable subset of columns for the "what do your rows look like" sample (not all ~45 fields).
+_SAMPLE_PROJECTION = {"_id": 0, "department_name": 1, "supplier_name": 1, "item_name": 1,
+                      "creation_date": 1, "acquisition_type": 1, "total_price": 1}
+
+
+def _sample_rows_block(language: str) -> str:
+    """3 real documents straight from MongoDB (never fabricated), for meta-questions that ask to
+    see example rows/columns."""
+    try:
+        docs = to_jsonable(sample_documents(3, _SAMPLE_PROJECTION))
+    except Exception:  # noqa: BLE001 - a DB hiccup must not break the (already-known) meta answer
+        log.warning("sample_documents failed for meta-question sample rows", exc_info=True)
+        return ""
+    if not docs:
+        return ""
+    header = "عينة من 3 مستندات حقيقية من قاعدة البيانات:" if language == "ar" \
+        else "Sample of 3 real documents from the database:"
+    return header + "\n" + "\n".join(f"{i + 1}. {compact_json(doc)}" for i, doc in enumerate(docs))
 
 
 def _annotate(value: Any) -> Any:
@@ -46,8 +70,15 @@ def _results_context(state: AgentState) -> str:
 def answer(state: AgentState) -> dict:
     """Write the final answer in the user's language and pick a chart for the last breakdown/time series."""
     language = state.get("language", "en")
-    if state.get("intent") in ("chit_chat", "out_of_scope"):
+    if state.get("fallback_answer"):
+        text = state["fallback_answer"]
+        chart = None
+    elif state.get("intent") in ("chit_chat", "out_of_scope", "meta_question"):
         text = state.get("direct_reply") or FALLBACK_REPLY[language]
+        if state.get("intent") == "meta_question" and wants_sample_rows(state["question"]):
+            block = _sample_rows_block(language)
+            if block:
+                text = f"{text}\n\n{block}"
         chart = None
     else:
         sys = ANSWER_SYSTEM.format(language_name="Arabic" if language == "ar" else "English")
@@ -61,6 +92,7 @@ def answer(state: AgentState) -> dict:
             if chart:
                 chart["step"] = state["steps"].index(step)
                 break
+    text = clean_text(text)
     last_pipe = next((s["pipeline"] for s in reversed(state.get("steps", [])) if s.get("pipeline")), None)
     turn: Turn = {"user": state["question"], "standalone": state.get("standalone_question", state["question"]),
                   "answer": text, "pipeline": compact_json(last_pipe, 400) if last_pipe else ""}

@@ -451,5 +451,26 @@
         "spend": 213433914.68
       }
     ]
+  },
+  {
+    "id": 114,
+    "question": "البيانات الموجوده عندك, من تاريخ كم الى كم؟",
+    "lang": "ar (meta: date range)",
+    "kind": "no_query",
+    "expected_intent": "meta_question"
+  },
+  {
+    "id": 115,
+    "question": "What date range does this dataset cover?",
+    "lang": "en (meta: date range)",
+    "kind": "no_query",
+    "expected_intent": "meta_question"
+  },
+  {
+    "id": 116,
+    "question": "What kind of fields or information does this data include?",
+    "lang": "en (meta: fields)",
+    "kind": "no_query",
+    "expected_intent": "meta_question"
   }
 ]

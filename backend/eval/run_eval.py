@@ -64,7 +64,7 @@ def score(q: dict[str, Any], state: dict[str, Any]) -> tuple[bool, str]:
     kind = infer_kind(q)
     steps = state.get("steps", [])
     if kind == "no_query":
-        ok = not steps and state.get("intent") in ("chit_chat", "out_of_scope")
+        ok = not steps and state.get("intent") in ("chit_chat", "out_of_scope", "meta_question")
         return ok, f"intent={state.get('intent')} (expected {q.get('expected_intent')})"
     sets = [s.get("results", []) for s in steps]
     m = compare(q["expected_result"], sets, kind)

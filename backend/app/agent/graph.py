@@ -1,13 +1,18 @@
 """LangGraph wiring for the procurement agent.
 
-understand ─┬─> plan ─> generate_query ⇄ schema_lookup
-            │               │
+understand ─┬─> plan ──(fallback text)───────────────────────┐
+            │     │                                          │
+            │     └─> generate_query ⇄ schema_lookup          │
+            │               │    └──(fallback text)──────────┤
             │            validate ──(invalid)──> reflect ──> generate_query (retry) | next step | answer
-            │               │
-            │            execute ──(error/empty)─> reflect
-            │               │
-            │      (next sub-question) ─> generate_query
-            └─(chit-chat / out-of-scope)─────────────> answer ─> END
+            │               │                                │
+            │            execute ──(error/empty)─> reflect   │
+            │               │                                │
+            │      (next sub-question) ─> generate_query     │
+            └─(chit-chat / out-of-scope / meta_question)──────┴──────> answer ─> END
+
+"fallback text" = the model refused a forced tool call even after an auto-tool_choice retry
+(Groq's tool_use_failed); its own text becomes the final answer via `fallback_answer`.
 """
 from __future__ import annotations
 
@@ -22,7 +27,7 @@ from app.agent.nodes.answer import answer
 from app.agent.nodes.execute import execute, route_after_execute
 from app.agent.nodes.generate import generate_query, route_after_generate
 from app.agent.nodes.lookup import schema_lookup
-from app.agent.nodes.plan import plan
+from app.agent.nodes.plan import plan, route_after_plan
 from app.agent.nodes.reflect import reflect, route_after_reflect
 from app.agent.nodes.understand import understand
 from app.agent.nodes.validate import route_after_validate, validate
@@ -59,8 +64,8 @@ def build_graph(checkpointer: Any | None = None) -> CompiledStateGraph:
 
     g.add_edge(START, "understand")
     g.add_conditional_edges("understand", route_after_understand, ["plan", "answer"])
-    g.add_edge("plan", "generate_query")
-    g.add_conditional_edges("generate_query", route_after_generate, ["schema_lookup", "validate"])
+    g.add_conditional_edges("plan", route_after_plan, ["generate_query", "answer"])
+    g.add_conditional_edges("generate_query", route_after_generate, ["schema_lookup", "validate", "answer"])
     g.add_edge("schema_lookup", "generate_query")
     g.add_conditional_edges("validate", route_after_validate, ["execute", "reflect"])
     g.add_conditional_edges("execute", route_after_execute, ["reflect", "generate_query", "answer"])
@@ -80,6 +85,6 @@ def turn_input(message: str) -> dict[str, Any]:
     return {
         "question": message, "intent": "data_question", "standalone_question": message, "direct_reply": "",
         "needs_plan": False, "plan": [message], "step_index": 0, "gen_messages": [], "candidate": None,
-        "pipeline": None, "error": None, "retries": 0, "lookups": 0, "empty_retry_done": False, "steps": [],
-        "answer": "", "chart": None, "event": {},
+        "pipeline": None, "fallback_answer": None, "error": None, "retries": 0, "lookups": 0,
+        "empty_retry_done": False, "steps": [], "answer": "", "chart": None, "event": {},
     }
