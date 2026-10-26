@@ -1,0 +1,21 @@
+# data (download + clean, see README)
+data/*.csv
+data/*.zip
+
+# portable MongoDB (local dev, no Docker)
+mongodb/
+mongo-data/
+*.mongod.log*
+
+# local Claude Code settings (machine-specific)
+.claude/settings.local.json
+# python
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+# node
+node_modules/
+frontend/dist/
+*.tsbuildinfo

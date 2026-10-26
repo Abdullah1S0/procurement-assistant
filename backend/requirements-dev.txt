@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest
+mongomock==4.3.0
+httpx

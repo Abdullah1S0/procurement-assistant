@@ -1,0 +1,605 @@
+[
+  {
+    "id": 1,
+    "question": "How many purchase orders were created in fiscal year 2013-2014?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "fiscal_year": "2013-2014"
+        }
+      },
+      {
+        "$group": {
+          "_id": "$po_key"
+        }
+      },
+      {
+        "$count": "orders"
+      }
+    ],
+    "expected_result": [
+      {
+        "orders": 68749
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "question": "كم عدد الطلبات اللي انعملت في مارس 2014؟",
+    "lang": "ar",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "year_month": "2014-03"
+        }
+      },
+      {
+        "$group": {
+          "_id": "$po_key"
+        }
+      },
+      {
+        "$count": "orders"
+      }
+    ],
+    "expected_result": [
+      {
+        "orders": 5673
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "question": "How many orders were created in Q2 of calendar year 2014?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "calendar_year": 2014,
+          "calendar_quarter": 2
+        }
+      },
+      {
+        "$group": {
+          "_id": "$po_key"
+        }
+      },
+      {
+        "$count": "orders"
+      }
+    ],
+    "expected_result": [
+      {
+        "orders": 23084
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "question": "Which fiscal quarter had the highest total spending?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false
+        }
+      },
+      {
+        "$group": {
+          "_id": "$fiscal_quarter_label",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "spend": -1
+        }
+      },
+      {
+        "$limit": 1
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "FY14-15 Q4",
+        "spend": 28801762780.47
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "question": "Which calendar quarter had the highest spending?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false
+        }
+      },
+      {
+        "$group": {
+          "_id": {
+            "year": "$calendar_year",
+            "q": "$calendar_quarter"
+          },
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "spend": -1
+        }
+      },
+      {
+        "$limit": 1
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": {
+          "year": 2015,
+          "q": 2
+        },
+        "spend": 28801762780.47
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "question": "What are the 5 most frequently ordered line items?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "item_name_normalized": {
+            "$ne": null
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$item_name_normalized",
+          "lines": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$sort": {
+          "lines": -1
+        }
+      },
+      {
+        "$limit": 5
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "medical supplies",
+        "lines": 3839
+      },
+      {
+        "_id": "contract",
+        "lines": 3103
+      },
+      {
+        "_id": "toner",
+        "lines": 1899
+      },
+      {
+        "_id": "ew",
+        "lines": 1606
+      },
+      {
+        "_id": "office supplies",
+        "lines": 1571
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "question": "Total spend per fiscal year?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false
+        }
+      },
+      {
+        "$group": {
+          "_id": "$fiscal_year",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "_id": 1
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "2012-2013",
+        "spend": 61876741272.33
+      },
+      {
+        "_id": "2013-2014",
+        "spend": 42462311569.32
+      },
+      {
+        "_id": "2014-2015",
+        "spend": 46844721382.83
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "question": "Top 5 departments by spending",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false
+        }
+      },
+      {
+        "$group": {
+          "_id": "$department_name",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "spend": -1
+        }
+      },
+      {
+        "$limit": 5
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "Health Care Services, Department of",
+        "spend": 99759311197.27
+      },
+      {
+        "_id": "Public Health, Department of",
+        "spend": 5619732914.21
+      },
+      {
+        "_id": "Social Services, Department of",
+        "spend": 5565307298.27
+      },
+      {
+        "_id": "Corrections and Rehabilitation, Department of",
+        "spend": 4692281924.77
+      },
+      {
+        "_id": "State Hospitals, Department of",
+        "spend": 4545294535.84
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "question": "Who are the top 3 suppliers by spend in fiscal year 2014-2015?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "fiscal_year": "2014-2015"
+        }
+      },
+      {
+        "$group": {
+          "_id": "$supplier_name",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "spend": -1
+        }
+      },
+      {
+        "$limit": 3
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "Fresno-Kings-Madera Regional Health Authority",
+        "spend": 3509792000.0
+      },
+      {
+        "_id": "Unknown",
+        "spend": 2992989949.29
+      },
+      {
+        "_id": "Ventura County",
+        "spend": 2907422778.1
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "question": "How is spending split across acquisition types?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false
+        }
+      },
+      {
+        "$group": {
+          "_id": "$acquisition_type",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "spend": -1
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "NON-IT Services",
+        "spend": 140589259405.73
+      },
+      {
+        "_id": "NON-IT Goods",
+        "spend": 4558575479.66
+      },
+      {
+        "_id": "IT Services",
+        "spend": 4449069898.3
+      },
+      {
+        "_id": "IT Goods",
+        "spend": 1573263060.85
+      },
+      {
+        "_id": "IT Telecommunications",
+        "spend": 13606379.94
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "question": "How much was spent using CalCard, and how many line items?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "calcard": true
+        }
+      },
+      {
+        "$group": {
+          "_id": null,
+          "spend": {
+            "$sum": "$total_price"
+          },
+          "lines": {
+            "$sum": 1
+          }
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": null,
+        "spend": 28559304.68,
+        "lines": 5353
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "question": "What share of spending was contract spend (has an LPA number)?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false
+        }
+      },
+      {
+        "$group": {
+          "_id": "$is_contract_spend",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": false,
+        "spend": 147193862345.97
+      },
+      {
+        "_id": true,
+        "spend": 3989911878.51
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "question": "How much did the Department of Corrections and Rehabilitation spend on IT Goods per fiscal year?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "department_name": "Corrections and Rehabilitation, Department of",
+          "acquisition_type": "IT Goods"
+        }
+      },
+      {
+        "$group": {
+          "_id": "$fiscal_year",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "_id": 1
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "2012-2013",
+        "spend": 23442623.76
+      },
+      {
+        "_id": "2013-2014",
+        "spend": 63595584.18
+      },
+      {
+        "_id": "2014-2015",
+        "spend": 71272849.43
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "question": "Which UNSPSC segment had the highest spend, and what was its top supplier?",
+    "lang": "en (multi-step)",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false
+        }
+      },
+      {
+        "$group": {
+          "_id": "$segment_title",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "spend": -1
+        }
+      },
+      {
+        "$limit": 1
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "Healthcare Services",
+        "spend": 111681819188.23
+      }
+    ],
+    "expected_result_step2": [
+      {
+        "_id": "Health Net Community Solutions, Inc.",
+        "spend": 13587059000.06
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "question": "Average order value (sum of line totals per order) in fiscal year 2012-2013?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "fiscal_year": "2012-2013"
+        }
+      },
+      {
+        "$group": {
+          "_id": "$po_key",
+          "v": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": null,
+          "avg_order_value": {
+            "$avg": "$v"
+          },
+          "orders": {
+            "$sum": 1
+          }
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": null,
+        "avg_order_value": 934157.75,
+        "orders": 66238
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "question": "How much was spent with small businesses in each fiscal year?",
+    "lang": "en",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "is_small_business": true
+        }
+      },
+      {
+        "$group": {
+          "_id": "$fiscal_year",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "_id": 1
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "2012-2013",
+        "spend": 1589162328.56
+      },
+      {
+        "_id": "2013-2014",
+        "spend": 1937533180.58
+      },
+      {
+        "_id": "2014-2015",
+        "spend": 2507061641.54
+      }
+    ]
+  }
+]

@@ -1,0 +1,455 @@
+[
+  {
+    "id": 101,
+    "question": "ما هي أكثر 3 جهات حكومية إنفاقاً في السنة المالية 2013-2014؟",
+    "lang": "ar",
+    "kind": "ranking",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "fiscal_year": "2013-2014"
+        }
+      },
+      {
+        "$group": {
+          "_id": "$department_name",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "spend": -1
+        }
+      },
+      {
+        "$limit": 3
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "Health Care Services, Department of",
+        "spend": 28456434686.89
+      },
+      {
+        "_id": "Corrections and Rehabilitation, Department of",
+        "spend": 2487959623.43
+      },
+      {
+        "_id": "Transportation, Department of",
+        "spend": 1555950630.88
+      }
+    ]
+  },
+  {
+    "id": 102,
+    "question": "Which quarter had the highest spending?",
+    "lang": "en (ambiguous quarter)",
+    "kind": "ranking",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false
+        }
+      },
+      {
+        "$group": {
+          "_id": "$fiscal_quarter_label",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "spend": -1
+        }
+      },
+      {
+        "$limit": 1
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "FY14-15 Q4",
+        "spend": 28801762780.47
+      }
+    ]
+  },
+  {
+    "id": 103,
+    "question": "How much did the Department of Corrections spend in fiscal year 2014-2015?",
+    "lang": "en (partial department name)",
+    "kind": "scalar",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "fiscal_year": "2014-2015",
+          "department_name": "Corrections and Rehabilitation, Department of"
+        }
+      },
+      {
+        "$group": {
+          "_id": null,
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": null,
+        "spend": 1298097406.11
+      }
+    ]
+  },
+  {
+    "id": 104,
+    "question": "What's the weather in Sacramento today?",
+    "lang": "en (out of scope)",
+    "kind": "no_query",
+    "expected_intent": "out_of_scope"
+  },
+  {
+    "id": 105,
+    "question": "Hi! What can you help me with?",
+    "lang": "en (chit-chat)",
+    "kind": "no_query",
+    "expected_intent": "chit_chat"
+  },
+  {
+    "id": 106,
+    "question": "How many orders were created in March 2014?",
+    "lang": "en",
+    "kind": "scalar",
+    "session": "s106",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "year_month": "2014-03"
+        }
+      },
+      {
+        "$group": {
+          "_id": "$po_key"
+        }
+      },
+      {
+        "$count": "orders"
+      }
+    ],
+    "expected_result": [
+      {
+        "orders": 5673
+      }
+    ]
+  },
+  {
+    "id": 107,
+    "question": "and in March 2015?",
+    "lang": "en (follow-up of 106)",
+    "kind": "scalar",
+    "session": "s106",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "year_month": "2015-03"
+        }
+      },
+      {
+        "$group": {
+          "_id": "$po_key"
+        }
+      },
+      {
+        "$count": "orders"
+      }
+    ],
+    "expected_result": [
+      {
+        "orders": 5924
+      }
+    ]
+  },
+  {
+    "id": 108,
+    "question": "What was the total spend in fiscal year 2014-2015?",
+    "lang": "en",
+    "kind": "scalar",
+    "session": "s108",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "fiscal_year": "2014-2015"
+        }
+      },
+      {
+        "$group": {
+          "_id": null,
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": null,
+        "spend": 46844721382.83
+      }
+    ]
+  },
+  {
+    "id": 109,
+    "question": "break that down by acquisition type",
+    "lang": "en (follow-up of 108)",
+    "kind": "set",
+    "session": "s108",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "fiscal_year": "2014-2015"
+        }
+      },
+      {
+        "$group": {
+          "_id": "$acquisition_type",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "spend": -1
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "NON-IT Services",
+        "spend": 42575053855.98
+      },
+      {
+        "_id": "IT Services",
+        "spend": 2058135508.19
+      },
+      {
+        "_id": "NON-IT Goods",
+        "spend": 1675450030.52
+      },
+      {
+        "_id": "IT Goods",
+        "spend": 522475608.2
+      },
+      {
+        "_id": "IT Telecommunications",
+        "spend": 13606379.94
+      }
+    ]
+  },
+  {
+    "id": 110,
+    "question": "كم صرفت الولاية باستخدام بطاقة CalCard في كل سنة مالية؟",
+    "lang": "ar",
+    "kind": "set",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "calcard": true
+        }
+      },
+      {
+        "$group": {
+          "_id": "$fiscal_year",
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "_id": 1
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "2012-2013",
+        "spend": 8453630.58
+      },
+      {
+        "_id": "2013-2014",
+        "spend": 8952927.53
+      },
+      {
+        "_id": "2014-2015",
+        "spend": 11152746.57
+      }
+    ]
+  },
+  {
+    "id": 111,
+    "question": "Which department placed the most orders, and what was its most frequently ordered item?",
+    "lang": "en (multi-step)",
+    "kind": "ranking",
+    "reference_pipeline": [
+      {
+        "$group": {
+          "_id": "$po_key",
+          "department_name": {
+            "$first": "$department_name"
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$department_name",
+          "orders": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$sort": {
+          "orders": -1
+        }
+      },
+      {
+        "$limit": 1
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "Corrections and Rehabilitation, Department of",
+        "orders": 36040
+      }
+    ],
+    "expected_result_step2": [
+      {
+        "_id": "bread",
+        "lines": 314
+      }
+    ]
+  },
+  {
+    "id": 112,
+    "question": "Show the number of orders per month in calendar year 2013",
+    "lang": "en (time series)",
+    "kind": "set",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "calendar_year": 2013
+        }
+      },
+      {
+        "$group": {
+          "_id": "$po_key",
+          "m": {
+            "$first": "$year_month"
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$m",
+          "orders": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$sort": {
+          "_id": 1
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": "2013-01",
+        "orders": 4908
+      },
+      {
+        "_id": "2013-02",
+        "orders": 4296
+      },
+      {
+        "_id": "2013-03",
+        "orders": 5629
+      },
+      {
+        "_id": "2013-04",
+        "orders": 5220
+      },
+      {
+        "_id": "2013-05",
+        "orders": 7140
+      },
+      {
+        "_id": "2013-06",
+        "orders": 8331
+      },
+      {
+        "_id": "2013-07",
+        "orders": 5752
+      },
+      {
+        "_id": "2013-08",
+        "orders": 5159
+      },
+      {
+        "_id": "2013-09",
+        "orders": 5632
+      },
+      {
+        "_id": "2013-10",
+        "orders": 5331
+      },
+      {
+        "_id": "2013-11",
+        "orders": 4152
+      },
+      {
+        "_id": "2013-12",
+        "orders": 4991
+      }
+    ]
+  },
+  {
+    "id": 113,
+    "question": "How much was spent with disabled veteran business enterprises (DVBE) in fiscal year 2014-2015?",
+    "lang": "en",
+    "kind": "scalar",
+    "reference_pipeline": [
+      {
+        "$match": {
+          "is_duplicate_row": false,
+          "fiscal_year": "2014-2015",
+          "is_dvbe": true
+        }
+      },
+      {
+        "$group": {
+          "_id": null,
+          "spend": {
+            "$sum": "$total_price"
+          }
+        }
+      }
+    ],
+    "expected_result": [
+      {
+        "_id": null,
+        "spend": 213433914.68
+      }
+    ]
+  }
+]
