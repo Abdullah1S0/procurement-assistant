@@ -13,14 +13,18 @@ GOLDEN_RULES = """\
 2. Dates: use creation_date (a real Date) or the derived fields (calendar_year, calendar_quarter, calendar_month, \
 year_month, fiscal_year, fiscal_quarter, fiscal_quarter_label). Never use purchase_date for time filters (can be back-dated).
 3. Fiscal year runs Jul 1 - Jun 30. fiscal_quarter 1=Jul-Sep, 2=Oct-Dec, 3=Jan-Mar, 4=Apr-Jun. \
-"Quarter" without qualification = fiscal quarter (group by fiscal_quarter_label); the answer also states the calendar equivalent.
+"Quarter" without qualification = fiscal quarter (group by fiscal_quarter_label); the answer also states the calendar equivalent. \
+CALENDAR quarter has no combined label field - group by the compound key {"year": "$calendar_year", "q": "$calendar_quarter"}, \
+never by calendar_quarter alone (that would merge e.g. every year's Q2 into one bucket).
 4. Spend = $sum of total_price (USD, excludes tax/shipping). Add {"is_duplicate_row": false} to spend and line-count queries.
 5. Negative amounts (1,438 lines) are adjustments/credits; included in spend sums by default.
 6. Outliers: Health Care Services has single lines worth billions (max $7.34B); spend rankings are dominated by Medi-Cal health plans.
 7. Items: "most frequently ordered" / "most ordered" / "most common" items means group by item_name_normalized (exclude \
-null) and COUNT LINES ({"$sum": 1} per document), exactly like the line-items few-shot below. Despite the word "ordered", \
-do NOT count distinct orders/po_key here — one line item can appear multiple times on the same order. Names are messy \
-("ew" = expert witness, typos). For topic searches use case-insensitive $regex on item_name / item_description / commodity_title.
+null) and COUNT LINES ({"$sum": 1} per document) in a SINGLE $group stage, exactly like the line-items few-shot below. \
+Despite the word "ordered", do NOT count distinct orders/po_key here, and do NOT first group by {item, po_key} and then \
+count those groups — that counts distinct ORDERS per item (a different, smaller number), because one line item can \
+appear multiple times on the same order. See the WRONG/RIGHT note under that few-shot. Names are messy ("ew" = expert \
+witness, typos). For topic searches use case-insensitive $regex on item_name / item_description / commodity_title.
 8. Supplier "Unknown" is a placeholder name (~$3B spend); keep it in rankings (the answer will flag it).
 9. Department names look like "<Name>, Department of" (e.g. "Corrections and Rehabilitation, Department of"). When the user \
 gives a partial/informal name of a department, method, segment or supplier, call get_distinct_values first to find the exact \
@@ -36,33 +40,50 @@ Do NOT compute the numerator and denominator into a single document with $cond/$
 - Date literals use extended JSON: {"$date": "2014-03-01T00:00:00Z"}; prefer the derived string/int fields.
 - If a previous step's result is given, use its values (e.g. the exact segment/department name) in your $match."""
 
-# 6 few-shot examples taken from data/eval_questions.json (ids 2, 4, 6, 9, 13, 15).
-FEW_SHOTS: list[tuple[str, list[dict]]] = [
+# 8 few-shot examples. Most are taken verbatim from data/eval_questions.json (see FEW_SHOT_EVAL_IDS); a few carry an
+# explicit WRONG/RIGHT note for a specific mistake the model has repeatedly made on that exact question.
+FEW_SHOTS: list[tuple[str, list[dict], str]] = [
     ("كم عدد الطلبات اللي انعملت في مارس 2014؟",
-     [{"$match": {"year_month": "2014-03"}}, {"$group": {"_id": "$po_key"}}, {"$count": "orders"}]),
+     [{"$match": {"year_month": "2014-03"}}, {"$group": {"_id": "$po_key"}}, {"$count": "orders"}], ""),
     ("Which fiscal quarter had the highest total spending?",
      [{"$match": {"is_duplicate_row": False}}, {"$group": {"_id": "$fiscal_quarter_label", "spend": {"$sum": "$total_price"}}},
-      {"$sort": {"spend": -1}}, {"$limit": 1}]),
+      {"$sort": {"spend": -1}}, {"$limit": 1}], ""),
+    ("Which calendar quarter had the highest spending?",
+     [{"$match": {"is_duplicate_row": False}},
+      {"$group": {"_id": {"year": "$calendar_year", "q": "$calendar_quarter"}, "spend": {"$sum": "$total_price"}}},
+      {"$sort": {"spend": -1}}, {"$limit": 1}],
+     'WRONG: {"$group":{"_id":"$calendar_quarter",...}} - grouping by the bare quarter number merges every year\'s '
+     "Q2 (etc.) together. Calendar quarter has no combined label field, so the group key must be the {year, q} pair above."),
     ("What are the 5 most frequently ordered line items?",
      [{"$match": {"is_duplicate_row": False, "item_name_normalized": {"$ne": None}}},
-      {"$group": {"_id": "$item_name_normalized", "lines": {"$sum": 1}}}, {"$sort": {"lines": -1}}, {"$limit": 5}]),
+      {"$group": {"_id": "$item_name_normalized", "lines": {"$sum": 1}}}, {"$sort": {"lines": -1}}, {"$limit": 5}],
+     'WRONG: [{"$group":{"_id":{"item":"$item_name_normalized","po":"$po_key"}}},{"$group":{"_id":"$_id.item",'
+     '"order_count":{"$sum":1}}}] - that two-stage group counts distinct ORDERS per item, not LINES. Always use the '
+     "single $group above for this question, even though the word is \"ordered\"."),
     ("Who are the top 3 suppliers by spend in fiscal year 2014-2015?",
      [{"$match": {"is_duplicate_row": False, "fiscal_year": "2014-2015"}},
-      {"$group": {"_id": "$supplier_name", "spend": {"$sum": "$total_price"}}}, {"$sort": {"spend": -1}}, {"$limit": 3}]),
+      {"$group": {"_id": "$supplier_name", "spend": {"$sum": "$total_price"}}}, {"$sort": {"spend": -1}}, {"$limit": 3}], ""),
     ("How much did the Department of Corrections and Rehabilitation spend on IT Goods per fiscal year?",
      [{"$match": {"is_duplicate_row": False, "department_name": "Corrections and Rehabilitation, Department of",
                   "acquisition_type": "IT Goods"}},
-      {"$group": {"_id": "$fiscal_year", "spend": {"$sum": "$total_price"}}}, {"$sort": {"_id": 1}}]),
+      {"$group": {"_id": "$fiscal_year", "spend": {"$sum": "$total_price"}}}, {"$sort": {"_id": 1}}], ""),
     ("Average order value (sum of line totals per order) in fiscal year 2012-2013?",
      [{"$match": {"is_duplicate_row": False, "fiscal_year": "2012-2013"}},
       {"$group": {"_id": "$po_key", "v": {"$sum": "$total_price"}}},
-      {"$group": {"_id": None, "avg_order_value": {"$avg": "$v"}, "orders": {"$sum": 1}}}]),
+      {"$group": {"_id": None, "avg_order_value": {"$avg": "$v"}, "orders": {"$sum": 1}}}], ""),
 ]
-FEW_SHOT_EVAL_IDS: tuple[int, ...] = (2, 4, 6, 9, 13, 15)
+# Eval ids these few-shots are taken verbatim from (data/eval_questions.json); used to compute the held-out score.
+FEW_SHOT_EVAL_IDS: tuple[int, ...] = (2, 4, 5, 6, 9, 13, 15)
 
 
 def _few_shots_text() -> str:
-    return "\n".join(f"Q: {q}\nPIPELINE: {json.dumps(p, ensure_ascii=False, separators=(',', ':'))}" for q, p in FEW_SHOTS)
+    blocks = []
+    for q, p, note in FEW_SHOTS:
+        block = f"Q: {q}\nPIPELINE: {json.dumps(p, ensure_ascii=False, separators=(',', ':'))}"
+        if note:
+            block += f"\n{note}"
+        blocks.append(block)
+    return "\n".join(blocks)
 
 
 GENERATE_SYSTEM = f"""You are a MongoDB expert. Translate a question about California state purchases (FY2012-13 to FY2014-15) \

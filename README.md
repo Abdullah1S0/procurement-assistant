@@ -162,7 +162,7 @@ Summarized from [`data/DATA_SCHEMA.md`](data/DATA_SCHEMA.md); the code is in `da
 
 ```bash
 cd backend
-python -m eval.run_eval                 # 16 given + 13 extra questions, live LLM → eval/report.md (+ report.json)
+python -m eval.run_eval                 # 16 given + 16 extra questions, live LLM → eval/report.md (+ report.json)
 python -m eval.run_eval --only given    # just the official set
 python -m eval.run_eval --self-check    # reference pipelines vs expected results (sanity check of the harness)
 ```
@@ -175,7 +175,7 @@ Scoring (`eval/compare.py`):
 - Multi-step questions must match both steps.
 - Out-of-scope and chit-chat questions must run no query.
 
-The 13 extra questions are:
+The 16 extra questions are:
 - Follow-ups ("and in March 2015?", "break that down by acquisition type").
 - Arabic questions.
 - An ambiguous "quarter".
@@ -183,17 +183,19 @@ The 13 extra questions are:
 - A department → top-item multi-step question.
 - A monthly time series.
 - Out-of-scope and chit-chat messages.
+- Meta-questions about the dataset itself ("what date range do you have?", Arabic + English).
 
 | Set | Accuracy |
 |---|---|
-| Given (16) | **16/16 (100%)** |
-| Given, held-out (10, excludes the 6 few-shot questions) | **10/10 (100%)** |
-| Extra (13) | **13/13 (100%)** |
-| **All (29)** | **29/29 (100%)** |
-| Harness self-check (29) | 29/29 ✅ |
+| Given (16) | _pending re-run on current code_ |
+| Given, held-out (9, excludes the 7 few-shot questions) | _pending re-run on current code_ |
+| Extra (16) | _pending re-run on current code_ |
+| **All (32)** | _pending re-run on current code_ |
+| Harness self-check (32) | 32/32 ✅ |
 
-Run live against `groq:openai/gpt-oss-120b` on 2026-10-26 (346,018-doc collection); median latency 3.4s, max 28.9s,
-1 self-correction used. Full per-question breakdown in `backend/eval/report.md`.
+`eval/report.md` currently on disk still reflects the LLM/prompt state before the latest fixes to `prompts.py` and
+`validate.py` (calendar-quarter grouping, item-frequency order-vs-lines count) - run `python -m eval.run_eval` to
+refresh it. Run live against `groq:openai/gpt-oss-120b`; full per-question breakdown in `backend/eval/report.md`.
 
 ## Example Q&A
 

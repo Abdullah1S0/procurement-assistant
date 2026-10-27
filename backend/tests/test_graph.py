@@ -34,6 +34,21 @@ def test_out_of_scope_skips_query(collection, fake_llm) -> None:
     assert state["answer"] == "I only know procurement data." and state["steps"] == []
 
 
+def test_item_frequency_order_count_mistake_is_self_corrected(collection, fake_llm) -> None:
+    """The validate node rejects the "count orders per item" mistake on an item-frequency
+    question and routes to reflect, even though the LLM's pipeline is otherwise well-formed."""
+    wrong = [{"$group": {"_id": {"item": "$item_name_normalized", "po": "$po_key"}}},
+             {"$group": {"_id": "$_id.item", "order_count": {"$sum": 1}}}, {"$sort": {"order_count": -1}}]
+    right = [{"$match": {"is_duplicate_row": False}},
+             {"$group": {"_id": "$item_name_normalized", "lines": {"$sum": 1}}}, {"$sort": {"lines": -1}}]
+    fake_llm([Understanding(intent="data_question", standalone_question="What are the most frequently ordered items?"),
+              submit(wrong, "c1"), submit(right, "c2"), AIMessage(content="toner is most frequent")])
+    state, nodes = _run(build_graph(InMemorySaver()), "What are the most frequently ordered items?")
+    assert nodes.count("reflect") == 1 and nodes.count("generate_query") == 2
+    assert state["steps"][0]["pipeline"][1]["$group"] == {"_id": "$item_name_normalized", "lines": {"$sum": 1}}
+    assert state["steps"][0]["results"][0] == {"_id": "toner", "lines": 3}
+
+
 def test_unsafe_pipeline_then_self_correct(collection, fake_llm) -> None:
     fake_llm([Understanding(intent="data_question", standalone_question="q"),
               submit([{"$out": "x"}], "c1"), submit(ORDERS, "c2"), AIMessage(content="ok")])
