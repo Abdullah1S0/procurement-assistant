@@ -3,7 +3,7 @@ import pytest
 from langchain_core.messages import AIMessage
 
 from app.agent.nodes.common import clean_text, safe_tool_failure_reply
-from app.db.schema import looks_like_meta_question, meta_reply, wants_sample_rows
+from app.db.schema import asks_about_revenue, looks_like_meta_question, meta_reply, revenue_clarification, wants_sample_rows
 from app.llm import ForcedToolCallFailed, _retry_after_from_message, invoke_forced_tool, tool_use_failed_text
 
 
@@ -68,6 +68,23 @@ def test_meta_reply_mentions_date_range_in_both_languages() -> None:
     ar = meta_reply("ar")
     assert "2012-07-02" in en and "2015-06-30" in en
     assert "2012-07-02" in ar and "2015-06-30" in ar
+    assert en != ar
+
+
+def test_asks_about_revenue_detects_en_and_ar_variants() -> None:
+    assert asks_about_revenue("What was the state's total revenue in fiscal year 2014-2015?")
+    assert asks_about_revenue("How much profit did the state make?")
+    assert asks_about_revenue("ما هي الإيرادات في السنة المالية 2014-2015؟")
+    assert asks_about_revenue("كم بلغت الأرباح؟")
+    assert not asks_about_revenue("What was the total spend in fiscal year 2014-2015?")
+    assert not asks_about_revenue("كم بلغ الإنفاق في السنة المالية 2014-2015؟")
+
+
+def test_revenue_clarification_never_calls_spend_revenue() -> None:
+    en = revenue_clarification("en")
+    ar = revenue_clarification("ar")
+    assert "spend" in en.lower() and "revenue" in en.lower()
+    assert "إنفاق" in ar and "إيرادات" in ar
     assert en != ar
 
 

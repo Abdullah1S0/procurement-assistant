@@ -93,12 +93,12 @@ export default function App() {
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto bg-cream">
+        <div className="flex-1 overflow-y-auto bg-navy">
           <div className="mx-auto max-w-4xl space-y-4 px-4 py-6">
             {!messages.length && (
               <div className="py-10 text-center">
-                <h2 className="text-xl font-semibold text-navy">Ask anything about state procurement</h2>
-                <p className="mt-1 text-sm text-navy/60">
+                <h2 className="text-xl font-semibold text-white">Ask anything about state procurement</h2>
+                <p className="mt-1 text-sm text-white/70">
                   Your question is turned into a MongoDB aggregation, executed, and explained.
                 </p>
               </div>
@@ -114,7 +114,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="border-t border-navy/10 bg-white">
+        <div className="border-t border-white/10 bg-navy">
           <div className="mx-auto max-w-4xl px-4 py-3">
             {!messages.length && examples.length > 0 && (
               <div className="mb-3 flex flex-wrap gap-2">
@@ -123,7 +123,7 @@ export default function App() {
                     key={e.text}
                     dir={e.lang === 'ar' ? 'rtl' : 'ltr'}
                     onClick={() => send(e.text)}
-                    className="rounded-full bg-navy/5 px-3 py-1 text-xs text-navy transition hover:bg-amber/20"
+                    className="rounded-full bg-white/10 px-3 py-1 text-xs text-white transition hover:bg-amber hover:text-navy"
                   >
                     {e.text}
                   </button>
@@ -142,7 +142,7 @@ export default function App() {
                 onChange={(e) => setInput(e.target.value)}
                 dir={rtlInput ? 'rtl' : 'ltr'}
                 placeholder="e.g. Which quarter had the highest spending?  /  كم عدد الطلبات في مارس 2014؟"
-                className="flex-1 rounded-full border border-navy/15 px-4 py-2 text-sm text-navy outline-none focus:border-amber focus:ring-2 focus:ring-amber/30"
+                className="flex-1 rounded-full border border-transparent bg-white px-4 py-2 text-sm text-navy outline-none focus:border-amber focus:ring-2 focus:ring-amber/30"
                 disabled={busy}
               />
               <button

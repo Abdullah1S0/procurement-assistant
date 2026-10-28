@@ -129,3 +129,35 @@ def looks_like_meta_question(text: str) -> bool:
 def wants_sample_rows(text: str) -> bool:
     """True if a meta-question is specifically asking to see example rows/columns."""
     return bool(_SAMPLE_ROWS_HINTS.search(text or ""))
+
+
+# This dataset is purchase SPENDING (money going out), never revenue/income/profit (money coming
+# in) - there is no such data at all. A spend-total query would silently "answer" a revenue
+# question with the wrong number relabeled, so this is checked deterministically and short-circuits
+# before any query is generated, rather than trusting prompt wording to catch every phrasing.
+_REVENUE_WORDS = re.compile(
+    r"\brevenue\b|\bincome\b|\bprofit(s|ability)?\b|\bearnings?\b|"
+    r"إيرادات|إيراد|دخل|أرباح|ربح|عائد(ات)?",
+    re.IGNORECASE,
+)
+
+
+def asks_about_revenue(text: str) -> bool:
+    """True if `text` asks about revenue/income/profit - a metric this dataset does not have."""
+    return bool(_REVENUE_WORDS.search(text or ""))
+
+
+def revenue_clarification(language: Literal["en", "ar"]) -> str:
+    """Canned reply for a revenue/income/profit question: say plainly that the data is purchase
+    spending, not revenue - never silently relabel spend as revenue."""
+    if language == "ar":
+        return (
+            "البيانات المتوفرة لدي هي بيانات إنفاق ولاية كاليفورنيا على المشتريات (purchase spending)، وليست "
+            "بيانات إيرادات أو دخل أو أرباح - لا تتوفر لدي أي بيانات عن الإيرادات. يمكنك أن تسألني مثلاً عن "
+            "إجمالي الإنفاق أو أكبر الجهات الحكومية إنفاقاً."
+        )
+    return (
+        "The data I have access to is California state **purchase spending** (money going out), not revenue, "
+        "income, or profit (money coming in) - there's no revenue data here at all. Try asking about total "
+        "spend or top-spending departments instead."
+    )

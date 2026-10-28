@@ -34,6 +34,15 @@ def test_out_of_scope_skips_query(collection, fake_llm) -> None:
     assert state["answer"] == "I only know procurement data." and state["steps"] == []
 
 
+def test_revenue_question_short_circuits_without_any_llm_call(collection, fake_llm) -> None:
+    # empty script: if `understand` called the LLM at all, FakeLLM.invoke would raise IndexError
+    fake_llm([])
+    state, nodes = _run(build_graph(InMemorySaver()), "What was the state's total revenue in fiscal year 2014-2015?")
+    assert nodes == ["understand", "answer"]
+    assert state["steps"] == []
+    assert "spend" in state["answer"].lower() and "revenue" in state["answer"].lower()
+
+
 def test_item_frequency_order_count_mistake_is_self_corrected(collection, fake_llm) -> None:
     """The validate node rejects the "count orders per item" mistake on an item-frequency
     question and routes to reflect, even though the LLM's pipeline is otherwise well-formed."""

@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from app.agent.nodes.common import detect_language, safe_tool_failure_reply, traced
 from app.agent.prompts import UNDERSTAND_SYSTEM
 from app.agent.state import AgentState
-from app.db.schema import looks_like_meta_question, meta_reply
+from app.db.schema import asks_about_revenue, looks_like_meta_question, meta_reply, revenue_clarification
 from app.llm import get_llm, invoke_with_backoff, tool_use_failed_text
 
 
@@ -36,6 +36,15 @@ def understand(state: AgentState) -> dict:
     """Classify the message; for data questions produce a standalone question (resolving follow-ups)."""
     question = state["question"]
     language = detect_language(question)
+    if asks_about_revenue(question):
+        # Deterministic, zero-token short-circuit: this dataset has no revenue/income/profit data
+        # at all, only purchase spending. Checked before any LLM call so there is no chance of the
+        # model silently relabelling a spend total as "revenue".
+        return {
+            "language": language, "intent": "meta_question", "standalone_question": question,
+            "direct_reply": revenue_clarification(language), "plan": [question], "needs_plan": False,
+            "_event": {"intent": "meta_question", "revenue_clarification": True},
+        }
     msgs = [SystemMessage(UNDERSTAND_SYSTEM),
             HumanMessage(f"Previous turns:\n{_history_text(state)}\n\nLatest user message: {question}")]
     try:

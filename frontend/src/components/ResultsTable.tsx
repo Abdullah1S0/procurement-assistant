@@ -1,8 +1,9 @@
 import type { QueryResult } from '../api'
+import { columnLabel } from '../fieldLabels'
 import { formatValue } from '../format'
 
 /** Small results table for one sub-query (first 50 rows from the API, 10 shown by default). */
-export function ResultsTable({ result }: { result: QueryResult }) {
+export function ResultsTable({ result, lang }: { result: QueryResult; lang: 'en' | 'ar' }) {
   if (!result.rows.length) return <p className="text-xs text-navy/50">No rows returned.</p>
   // `label` is the backend's merged form of a compound _id (for charts); its parts are already columns
   const cols = Array.from(new Set(result.rows.flatMap((r) => Object.keys(r)))).filter((c) => c !== 'label')
@@ -13,7 +14,7 @@ export function ResultsTable({ result }: { result: QueryResult }) {
         <thead className="bg-navy/5 text-navy/60">
           <tr>
             {cols.map((c) => (
-              <th key={c} className="px-3 py-1.5 text-left font-medium">{c === '_id' ? 'group' : c}</th>
+              <th key={c} className="px-3 py-1.5 text-left font-medium">{columnLabel(c, result.pipeline, lang)}</th>
             ))}
           </tr>
         </thead>

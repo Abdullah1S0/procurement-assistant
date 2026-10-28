@@ -38,12 +38,12 @@ export function Sidebar({
 
   if (collapsed) {
     return (
-      <aside className="hidden w-10 shrink-0 flex-col items-center border-r border-navy/10 bg-white py-4 lg:flex">
+      <aside className="hidden w-10 shrink-0 flex-col items-center border-r border-navy/15 bg-amber py-4 lg:flex">
         <button
           onClick={() => setCollapsed(false)}
           title="Expand sidebar"
           aria-label="Expand sidebar"
-          className="rounded-full p-1.5 text-navy transition hover:bg-amber/20"
+          className="rounded-full p-1.5 text-navy transition hover:bg-amber-dark"
         >
           »
         </button>
@@ -52,26 +52,26 @@ export function Sidebar({
   }
 
   return (
-    <aside className="hidden w-72 shrink-0 flex-col border-r border-navy/10 bg-white lg:flex">
-      <div className="border-b border-navy/10 p-4">
+    <aside className="hidden w-72 shrink-0 flex-col border-r border-navy/15 bg-amber lg:flex">
+      <div className="border-b border-navy/15 p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-navy">procurement.purchases</h2>
           <button
             onClick={() => setCollapsed(true)}
             title="Collapse sidebar"
             aria-label="Collapse sidebar"
-            className="rounded-full p-1 text-navy/50 transition hover:bg-amber/20 hover:text-navy"
+            className="rounded-full p-1 text-navy/60 transition hover:bg-amber-dark hover:text-navy"
           >
             «
           </button>
         </div>
-        <p className="text-xs text-navy/50">{health}</p>
+        <p className="text-xs text-navy/70">{health}</p>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={uiLang === 'ar' ? 'بحث في الحقول…' : 'Filter fields…'}
           dir={uiLang === 'ar' ? 'rtl' : 'ltr'}
-          className="mt-2 w-full rounded-full border border-navy/15 px-3 py-1 text-xs text-navy outline-none focus:border-amber focus:ring-2 focus:ring-amber/30"
+          className="mt-2 w-full rounded-full border border-amber-dark bg-white/90 px-3 py-1 text-xs text-navy outline-none focus:border-amber-dark focus:ring-2 focus:ring-amber-dark/40"
         />
       </div>
       <ul className="flex-1 space-y-1 overflow-y-auto p-3 text-xs">
@@ -84,14 +84,14 @@ export function Sidebar({
             <li key={f.name} className="rounded-lg">
               <button
                 onClick={() => setSelected(isOpen ? null : f.name)}
-                className={`w-full rounded-lg px-2 py-1.5 text-left transition ${isOpen ? 'bg-amber/15' : 'hover:bg-navy/5'}`}
+                className={`w-full rounded-lg px-2 py-1.5 text-left transition ${isOpen ? 'bg-amber-dark' : 'hover:bg-amber-dark/60'}`}
               >
                 <div>
                   <span className="font-mono font-medium text-navy">{f.name}</span>{' '}
                   <span className="text-teal">{f.type}</span>
                 </div>
                 {description && (
-                  <p dir={uiLang === 'ar' ? 'rtl' : 'ltr'} className="mt-0.5 text-navy/60">
+                  <p dir={uiLang === 'ar' ? 'rtl' : 'ltr'} className="mt-0.5 text-navy/70">
                     {description}
                   </p>
                 )}
@@ -103,7 +103,7 @@ export function Sidebar({
                       key={ex}
                       dir={uiLang === 'ar' ? 'rtl' : 'ltr'}
                       onClick={() => onPickExample(ex)}
-                      className="rounded-full bg-navy/5 px-2.5 py-1 text-left text-[11px] text-navy transition hover:bg-amber/25"
+                      className="rounded-full bg-white/70 px-2.5 py-1 text-left text-[11px] text-navy transition hover:bg-white"
                     >
                       {ex}
                     </button>

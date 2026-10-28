@@ -31,7 +31,7 @@ export function ChatMessage({ msg, onRetry }: { msg: Message; onRetry?: () => vo
   const r = msg.response
   return (
     <div className="flex justify-start">
-      <div className="w-full max-w-[90%] space-y-3 rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-sm ring-1 ring-navy/10">
+      <div className="w-full max-w-[90%] space-y-3 rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg shadow-black/20">
         <StepIndicator steps={msg.steps} running={msg.status === 'pending'} />
         {msg.status === 'error' && (
           <div className="rounded-lg bg-error/10 px-3 py-2 text-sm text-error ring-1 ring-error/30">
@@ -81,7 +81,7 @@ function Results({ response }: { response: ChatResponse }) {
           ))}
         </div>
       )}
-      <ResultsTable result={shown} />
+      <ResultsTable result={shown} lang={response.language} />
     </div>
   )
 }

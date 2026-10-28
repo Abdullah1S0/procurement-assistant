@@ -9,7 +9,7 @@
   --color-navy: #27394c;
   --color-navy-light: #35506c;
   --color-amber: #ffb300;
-  --color-amber-dark: #e6a200;
+  --color-amber-dark: #e6a100;
   --color-cream: #f9f0eb;
   --color-teal: #044b4e;
   --color-blue: #10509a;
@@ -17,7 +17,7 @@
 }
 
 html, body, #root { height: 100%; }
-body { @apply bg-cream text-navy antialiased; }
+body { @apply bg-navy text-white antialiased; }
 
 /* Elements explicitly marked RTL (the app already tags Arabic text this way) switch font. */
 [dir="rtl"] { font-family: var(--font-arabic); }
