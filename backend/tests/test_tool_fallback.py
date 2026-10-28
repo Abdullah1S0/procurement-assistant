@@ -57,6 +57,18 @@ def test_tool_use_failed_text_ignores_other_errors() -> None:
     assert tool_use_failed_text(_FakeGroqError("not a dict body")) is None
 
 
+def test_tool_use_failed_text_detects_empty_failed_generation() -> None:
+    # regression: an EMPTY failed_generation ("") must still be recognised as tool_use_failed -
+    # `"" or None` previously collapsed it to None, which every caller reads as "not this error
+    # at all" and re-raises uncaught instead of retrying.
+    exc = _FakeGroqError({"error": {"code": "tool_use_failed", "failed_generation": ""}})
+    assert tool_use_failed_text(exc) == ""
+    assert tool_use_failed_text(exc) is not None
+    exc2 = _FakeGroqError({"error": {"code": "output_parse_failed"}})  # field missing entirely
+    assert tool_use_failed_text(exc2) == ""
+    assert tool_use_failed_text(exc2) is not None
+
+
 def test_strip_empty_assumptions_line_removes_placeholder_variants() -> None:
     cases = [
         "**$28.80B**\n\n*Assumptions: None*",
@@ -161,6 +173,23 @@ def test_invoke_forced_tool_raises_when_retry_calls_no_tool_at_all() -> None:
     with pytest.raises(ForcedToolCallFailed) as exc_info:
         invoke_forced_tool(llm, [], "required", [])
     assert "42" in exc_info.value.text
+
+
+def test_invoke_forced_tool_recovers_from_empty_failed_generation() -> None:
+    # the exact live bug: tool_use_failed with failed_generation == "" must still retry (and
+    # succeed here), not re-raise the original exception as if it weren't this error at all.
+    empty = _FakeGroqError({"error": {"code": "tool_use_failed", "failed_generation": ""}})
+    call = AIMessage(content="", tool_calls=[{"name": "submit_pipeline", "id": "c1", "args": {}}])
+    llm = _FakeLLM([empty, call])
+    assert invoke_forced_tool(llm, [], "required", []) is call
+
+
+def test_invoke_forced_tool_falls_back_safely_on_empty_failed_generation_both_times() -> None:
+    empty = _FakeGroqError({"error": {"code": "tool_use_failed", "failed_generation": ""}})
+    llm = _FakeLLM([empty, empty])
+    with pytest.raises(ForcedToolCallFailed) as exc_info:
+        invoke_forced_tool(llm, [], "required", [])
+    assert exc_info.value.text == ""
 
 
 def test_safe_tool_failure_reply_never_returns_raw_model_text() -> None:

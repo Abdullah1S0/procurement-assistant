@@ -55,8 +55,13 @@ export default function App() {
       )
       patch(aid, (m) => ({ ...m, status: 'done', response, text: response.answer, steps: response.steps }))
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err)
-      patch(aid, (m) => ({ ...m, status: 'error', text: `Something went wrong: ${reason}` }))
+      // Never show a raw exception/stack text in the UI - log it for debugging, show a friendly,
+      // localized message instead (the error bubble already has a Retry button).
+      console.error('chat request failed:', err)
+      const friendly = isArabic(message)
+        ? 'حدث خطأ أثناء محاولة الإجابة - يرجى المحاولة مرة أخرى.'
+        : 'Something went wrong while answering that - please try again.'
+      patch(aid, (m) => ({ ...m, status: 'error', text: friendly }))
     } finally {
       setBusy(false)
     }

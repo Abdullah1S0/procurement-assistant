@@ -35,8 +35,15 @@ def generate_query(state: AgentState) -> dict:
     try:
         ai: AIMessage = invoke_forced_tool(get_llm(), TOOLS, tool_choice, messages)
     except ForcedToolCallFailed as exc:
-        question = state.get("standalone_question", state.get("question", ""))
-        safe_text = safe_tool_failure_reply(question, state.get("language", "en"), exc.text)
+        step_question = state["plan"][state.get("step_index", 0)]
+        language = state.get("language", "en")
+        safe_text = safe_tool_failure_reply(step_question, language, exc.text)
+        if state.get("step_index", 0) > 0:
+            # a later step of a multi-step plan failed; name which part so `answer` can combine
+            # this with the steps that already succeeded instead of discarding their results.
+            prefix = (f'لم أستطع الإجابة عن هذا الجزء من سؤالك: "{step_question}".' if language == "ar" else
+                      f'I could not answer this part of your question: "{step_question}".')
+            safe_text = f"{prefix} {safe_text}"
         return {"gen_messages": messages, "candidate": None, "fallback_answer": safe_text,
                 "_event": {"action": "fallback_text", "safe": True}}
     messages.append(ai)

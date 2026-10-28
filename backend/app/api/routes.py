@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from sse_starlette.sse import EventSourceResponse
 
+from app.agent.nodes.common import detect_language
 from app.api.models import ChatRequest, ChatResponse
 from app.api.service import aiter_chat, run_chat
 from app.config import get_settings
@@ -17,6 +18,18 @@ from app.db.schema import FIELDS
 
 log = logging.getLogger("api")
 router = APIRouter(prefix="/api")
+
+# The UI must never show a raw exception (stack text, BadRequestError, etc.) - the full exception
+# is always logged server-side via log.exception(); only this friendly, localized message (plus
+# the existing frontend Retry button) reaches the client.
+_FRIENDLY_ERROR = {
+    "en": "Something went wrong while answering that - please try again.",
+    "ar": "حدث خطأ أثناء محاولة الإجابة - يرجى المحاولة مرة أخرى.",
+}
+
+
+def _friendly_error_detail(message: str) -> str:
+    return _FRIENDLY_ERROR[detect_language(message)]
 
 EXAMPLES = [
     {"lang": "en", "text": "How many orders were created in March 2014?"},
@@ -66,7 +79,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
         return await run_in_threadpool(run_chat, req.session_id, req.message)
     except Exception as exc:
         log.exception("chat failed")
-        raise HTTPException(status_code=502, detail=f"Agent error: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(status_code=502, detail=_friendly_error_detail(req.message)) from exc
 
 
 @router.post("/chat/stream")
@@ -79,6 +92,6 @@ async def chat_stream(req: ChatRequest) -> EventSourceResponse:
                 yield {"event": kind, "data": payload.model_dump_json()}
         except Exception as exc:  # noqa: BLE001
             log.exception("chat stream failed")
-            yield {"event": "error", "data": json.dumps({"detail": f"{type(exc).__name__}: {exc}"})}
+            yield {"event": "error", "data": json.dumps({"detail": _friendly_error_detail(req.message)})}
 
     return EventSourceResponse(events())

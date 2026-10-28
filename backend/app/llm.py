@@ -111,17 +111,20 @@ _FORCED_TOOL_CALL_ERROR_CODES = frozenset({"tool_use_failed", "output_parse_fail
 
 
 def tool_use_failed_text(exc: Exception) -> str | None:
-    """Return the model's `failed_generation` text if `exc` is a Groq 400 error from a forced
-    `tool_choice` where the model didn't produce a valid tool call: "tool_use_failed" (answered in
-    plain text) or "output_parse_failed" (emitted something that couldn't be parsed as the tool
-    call, e.g. stray reasoning text). Returns None for any other exception."""
+    """Return the model's `failed_generation` text (possibly an empty string) if `exc` is a Groq
+    400 error from a forced `tool_choice` where the model didn't produce a valid tool call:
+    "tool_use_failed" (answered in plain text) or "output_parse_failed" (emitted something that
+    couldn't be parsed as the tool call, e.g. stray reasoning text). Returns None ONLY when `exc`
+    is not one of these errors at all - callers must treat "" (detected, but no text) and None
+    (not this error) differently, never conflate them with `or`."""
     body = getattr(exc, "body", None)
     if not isinstance(body, dict):
         return None
     error = body.get("error")
     if not isinstance(error, dict) or error.get("code") not in _FORCED_TOOL_CALL_ERROR_CODES:
         return None
-    return error.get("failed_generation") or None
+    failed_generation = error.get("failed_generation")
+    return failed_generation if isinstance(failed_generation, str) else ""
 
 
 def invoke_with_backoff(runnable: Runnable, inputs: Any) -> Any:

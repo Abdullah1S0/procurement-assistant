@@ -70,7 +70,10 @@ def _results_context(state: AgentState) -> str:
 def answer(state: AgentState) -> dict:
     """Write the final answer in the user's language and pick a chart for the last breakdown/time series."""
     language = state.get("language", "en")
-    if state.get("fallback_answer"):
+    # A later step of a multi-step plan can fail after earlier steps already succeeded - answer
+    # from what DID succeed instead of discarding it, and append which part couldn't be answered.
+    has_partial_results = bool(state.get("fallback_answer")) and bool(state.get("steps"))
+    if state.get("fallback_answer") and not has_partial_results:
         text = state["fallback_answer"]
         chart = None
     elif state.get("intent") in ("chit_chat", "out_of_scope", "meta_question"):
@@ -86,6 +89,8 @@ def answer(state: AgentState) -> dict:
                  f"Query results:\n{_results_context(state)}")
         msg = invoke_with_backoff(get_llm(fast=True), [SystemMessage(sys), HumanMessage(human)])
         text = msg.content if isinstance(msg.content, str) else str(msg.content)
+        if has_partial_results:
+            text = f"{text}\n\n{state['fallback_answer']}"
         chart = None
         for step in reversed(state.get("steps", [])):
             chart = suggest_chart(step.get("results", []), step.get("chart_hint"))
