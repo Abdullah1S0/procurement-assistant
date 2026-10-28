@@ -7,7 +7,7 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agent.charts import suggest_chart
-from app.agent.nodes.common import clean_text, compact_json, traced
+from app.agent.nodes.common import clean_text, compact_json, strip_empty_assumptions_line, traced
 from app.agent.prompts import ANSWER_SYSTEM
 from app.agent.state import AgentState, Turn
 from app.db.client import sample_documents
@@ -92,7 +92,7 @@ def answer(state: AgentState) -> dict:
             if chart:
                 chart["step"] = state["steps"].index(step)
                 break
-    text = clean_text(text)
+    text = strip_empty_assumptions_line(clean_text(text))
     last_pipe = next((s["pipeline"] for s in reversed(state.get("steps", [])) if s.get("pipeline")), None)
     turn: Turn = {"user": state["question"], "standalone": state.get("standalone_question", state["question"]),
                   "answer": text, "pipeline": compact_json(last_pipe, 400) if last_pipe else ""}

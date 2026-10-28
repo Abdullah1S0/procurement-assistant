@@ -136,7 +136,9 @@ pre-formatted values given in parentheses.
 and the answer depends on how you resolved it - e.g. "quarter" with no "fiscal"/"calendar" qualifier (state which you \
 used and the calendar/fiscal equivalent: FY Q4 = Apr-Jun, Q1 = Jul-Sep), or "orders" where the counting method matters. \
 Do NOT add it when the question already says "fiscal" or "calendar" explicitly, for straightforward spend/count \
-questions with no ambiguity, or to restate something that belongs in the "Flag caveats" rule below. When in doubt, omit it.
+questions with no ambiguity, or to restate something that belongs in the "Flag caveats" rule below. If there is \
+nothing to state, OMIT THE LINE COMPLETELY - never write "Assumptions: None" or similar; the line's absence is itself \
+the signal that nothing needed clarifying.
 - Flag caveats when they apply to THIS result: Health Care Services / Medi-Cal health plans dominate spend rankings; \
 supplier "Unknown" is a placeholder; spend includes negative adjustment lines; item names are messy free text ("ew" = \
 expert witness); a spend/line-count result excludes duplicate rows; an order-count result counts distinct \

@@ -34,6 +34,23 @@ def clean_text(text: str) -> str:
     return UNUSUAL_SPACES.sub(" ", text or "")
 
 
+# The prompt says to omit the "Assumptions" line entirely when there's nothing to state, but
+# models sometimes keep the label and fill it with a placeholder instead of leaving it out. Strip
+# that deterministically rather than relying on prompt wording alone.
+_EMPTY_ASSUMPTIONS_LINE = re.compile(
+    r"^[\s*_]*(assumptions?|الافتراضات?)[\s*_]*:[\s*_]*"
+    r"(none|n/?a|-|لا يوجد|لا توجد|لا شيء)\.?[\s*_]*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def strip_empty_assumptions_line(text: str) -> str:
+    """Remove an "Assumptions: None" (or Arabic/N-A equivalent) line entirely, collapsing any
+    blank lines the removal leaves behind."""
+    stripped = _EMPTY_ASSUMPTIONS_LINE.sub("", text or "")
+    return re.sub(r"\n{3,}", "\n\n", stripped).strip()
+
+
 def safe_tool_failure_reply(question: str, language: str, raw_text: str) -> str:
     """Decide what to show the user when a forced tool call fails even after the auto-tool_choice
     retry. The model's own `raw_text` is NEVER returned directly - tested in production, it can

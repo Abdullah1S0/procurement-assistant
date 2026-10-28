@@ -9,7 +9,7 @@ export function ResultsTable({ result, lang }: { result: QueryResult; lang: 'en'
   const cols = Array.from(new Set(result.rows.flatMap((r) => Object.keys(r)))).filter((c) => c !== 'label')
   const rows = result.rows.slice(0, 10)
   return (
-    <div className="overflow-x-auto rounded-lg border border-navy/10 bg-white" dir="ltr">
+    <div className="overflow-x-auto rounded-lg border border-navy/10 bg-white text-navy" dir="ltr">
       <table className="min-w-full text-xs">
         <thead className="bg-navy/5 text-navy/60">
           <tr>

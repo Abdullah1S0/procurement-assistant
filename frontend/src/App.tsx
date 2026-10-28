@@ -78,7 +78,7 @@ export default function App() {
 
   return (
     <div className="flex h-full">
-      <Sidebar fields={fields} health={health} uiLang={uiLang} onPickExample={(text) => setInput(text)} />
+      <Sidebar fields={fields} health={health} uiLang={uiLang} onPickExample={(text) => send(text)} />
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between bg-navy px-6 py-3 text-white">
           <div>

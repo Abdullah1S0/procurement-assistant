@@ -80,21 +80,35 @@ export function Sidebar({
           const isOpen = selected === f.name
           const description = uiLang === 'ar' && help ? help.descriptionAr : f.notes
           const examples = help ? (uiLang === 'ar' ? help.examples.ar : help.examples.en) : []
+          const header = (
+            <div>
+              <span className="font-mono font-medium text-navy">{f.name}</span>{' '}
+              <span className="text-teal">{f.type}</span>
+            </div>
+          )
+          const body = description && (
+            <p dir={uiLang === 'ar' ? 'rtl' : 'ltr'} className="mt-0.5 text-navy/70">
+              {description}
+            </p>
+          )
+          // Technical/internal fields (no FIELD_HELP entry) have no example questions, so they
+          // render as plain, non-interactive rows instead of a clickable button.
+          if (!help) {
+            return (
+              <li key={f.name} className="rounded-lg px-2 py-1.5">
+                {header}
+                {body}
+              </li>
+            )
+          }
           return (
             <li key={f.name} className="rounded-lg">
               <button
                 onClick={() => setSelected(isOpen ? null : f.name)}
                 className={`w-full rounded-lg px-2 py-1.5 text-left transition ${isOpen ? 'bg-amber-dark' : 'hover:bg-amber-dark/60'}`}
               >
-                <div>
-                  <span className="font-mono font-medium text-navy">{f.name}</span>{' '}
-                  <span className="text-teal">{f.type}</span>
-                </div>
-                {description && (
-                  <p dir={uiLang === 'ar' ? 'rtl' : 'ltr'} className="mt-0.5 text-navy/70">
-                    {description}
-                  </p>
-                )}
+                {header}
+                {body}
               </button>
               {isOpen && examples.length > 0 && (
                 <div className="mb-1 mt-1 flex flex-col gap-1 px-2">

@@ -11,7 +11,7 @@ export function QueryPanel({ results }: { results: QueryResult[] }) {
   const [open, setOpen] = useState(false)
   if (!results.length) return null
   return (
-    <div className="rounded-lg border border-navy/10 bg-white" dir="ltr">
+    <div className="rounded-lg border border-navy/10 bg-white text-navy" dir="ltr">
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-navy hover:bg-navy/5"

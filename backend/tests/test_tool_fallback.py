@@ -2,7 +2,7 @@
 import pytest
 from langchain_core.messages import AIMessage
 
-from app.agent.nodes.common import clean_text, safe_tool_failure_reply
+from app.agent.nodes.common import clean_text, safe_tool_failure_reply, strip_empty_assumptions_line
 from app.db.schema import asks_about_revenue, looks_like_meta_question, meta_reply, revenue_clarification, wants_sample_rows
 from app.llm import ForcedToolCallFailed, _retry_after_from_message, invoke_forced_tool, tool_use_failed_text
 
@@ -55,6 +55,25 @@ def test_tool_use_failed_text_ignores_other_errors() -> None:
     assert tool_use_failed_text(_FakeGroqError({"error": {"code": "rate_limit_exceeded"}})) is None
     assert tool_use_failed_text(ValueError("boom")) is None
     assert tool_use_failed_text(_FakeGroqError("not a dict body")) is None
+
+
+def test_strip_empty_assumptions_line_removes_placeholder_variants() -> None:
+    cases = [
+        "**$28.80B**\n\n*Assumptions: None*",
+        "**$28.80B**\n\n*Assumptions: None.*",
+        "**$28.80B**\n\nAssumptions: N/A",
+        "**$28.80B**\n\n_الافتراضات: لا يوجد_",
+    ]
+    for text in cases:
+        cleaned = strip_empty_assumptions_line(text)
+        assert "ssumption" not in cleaned.lower()
+        assert "افتراض" not in cleaned
+        assert cleaned.startswith("**$28.80B**")
+
+
+def test_strip_empty_assumptions_line_keeps_a_real_assumption() -> None:
+    text = "**$28.80B**\n\n*Assumptions: quarter read as fiscal quarter (FY Q4 = Apr-Jun).*"
+    assert strip_empty_assumptions_line(text) == text
 
 
 def test_clean_text_normalises_unusual_spaces() -> None:
