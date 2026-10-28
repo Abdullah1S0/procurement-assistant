@@ -187,15 +187,27 @@ The 16 extra questions are:
 
 | Set | Accuracy |
 |---|---|
-| Given (16) | _pending re-run on current code_ |
-| Given, held-out (9, excludes the 7 few-shot questions) | _pending re-run on current code_ |
-| Extra (16) | _pending re-run on current code_ |
-| **All (32)** | _pending re-run on current code_ |
+| Given (16) | 15/16 (94%) |
+| Given, held-out (9, excludes the 7 few-shot questions) | **9/9 (100%)** |
+| Extra (16) | 14/16 (88%) |
+| **All (32)** | **29/32 (91%)** |
 | Harness self-check (32) | 32/32 ✅ |
 
-`eval/report.md` currently on disk still reflects the LLM/prompt state before the latest fixes to `prompts.py` and
-`validate.py` (calendar-quarter grouping, item-frequency order-vs-lines count) - run `python -m eval.run_eval` to
-refresh it. Run live against `groq:openai/gpt-oss-120b`; full per-question breakdown in `backend/eval/report.md`.
+Run live against `groq:openai/gpt-oss-120b` on 2026-10-28 (346,018-doc collection); median latency 4.2s, max 55.4s,
+0 self-corrections used. Full per-question breakdown in `backend/eval/report.md`. 3 failures:
+- **#6** "most frequently ordered line items": the model counted distinct orders per item via
+  `$addToSet`+`$size` instead of counting lines - a different pipeline *shape* expressing the same
+  mistake `validate.py` already guarded against (see `app/agent/nodes/validate.py`). The guardrail
+  was broadened right after this run to catch any reference to `po_key`/`purchase_order_number` on
+  this question type, regardless of shape (two-stage `$group`, `$addToSet`, etc.) - verified by
+  unit/integration tests (`tests/test_validate_node.py`, `tests/test_graph.py`), not yet by a live
+  re-run (Groq's daily quota was saturated by this session's own testing).
+- **#103** a Groq `output_parse_failed` (model emitted reasoning text instead of a tool call) -
+  a sibling of the `tool_use_failed` case `llm.py` already retries/falls back for, under a
+  different error code we don't yet handle. Not yet fixed.
+- **#109** a fiscal-year follow-up question lost its FY2014-2015 scope from the previous turn and
+  summed all three fiscal years instead. Not yet investigated; unclear if it's a one-off sample or
+  a real follow-up-memory gap.
 
 ## Example Q&A
 

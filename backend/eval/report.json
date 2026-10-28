@@ -7,7 +7,7 @@
     "pass": true,
     "why": "scalar",
     "error": null,
-    "latency_s": 2.28,
+    "latency_s": 4.27,
     "retries": 0,
     "pipelines": [
       [
@@ -22,14 +22,14 @@
           }
         },
         {
-          "$count": "orders"
+          "$count": "purchase_orders"
         },
         {
           "$limit": 200
         }
       ]
     ],
-    "answer": "**68,749 purchase orders** were created in fiscal year 2013‑2014.  \n\n*Assumptions: “orders” represent distinct department + PO number combinations.*",
+    "answer": "**68,749 purchase orders** were created in fiscal year 2013‑2014.  \n\n*Assumptions: “purchase orders” refers to distinct department + PO number rows.*",
     "few_shot": false
   },
   {
@@ -40,7 +40,7 @@
     "pass": true,
     "why": "scalar",
     "error": null,
-    "latency_s": 2.3,
+    "latency_s": 2.8,
     "retries": 0,
     "pipelines": [
       [
@@ -62,7 +62,7 @@
         }
       ]
     ],
-    "answer": "عدد الطلبات التي أُنشئت في مارس 2014 هو **5,673 طلب**.  \n\n*Assumptions: تم احتساب الطلبات كأزواج مميزة من القسم ورقم أمر الشراء.*",
+    "answer": "عدد الطلبات التي أُنشئت في مارس 2014 هو **5,673 طلبًا**.  \n\n*Assumptions: تم احتساب الطلبات كأزواج مميزة من القسم ورقم أمر الشراء.*",
     "few_shot": true
   },
   {
@@ -73,7 +73,7 @@
     "pass": true,
     "why": "scalar",
     "error": null,
-    "latency_s": 1.96,
+    "latency_s": 55.35,
     "retries": 0,
     "pipelines": [
       [
@@ -96,7 +96,7 @@
         }
       ]
     ],
-    "answer": "**23,084 orders** were created in Q2 of calendar year 2014.  \n\n*Assumptions: Q2 refers to April – June 2014; orders count distinct department + PO number.*",
+    "answer": "**23,084 orders** were created in Q2 (April – June) 2014.  \n\n*Assumptions: “orders” represent distinct department + PO number.*",
     "few_shot": false
   },
   {
@@ -107,19 +107,12 @@
     "pass": true,
     "why": "top-1 ordered",
     "error": null,
-    "latency_s": 3.01,
+    "latency_s": 3.57,
     "retries": 0,
     "pipelines": [
       [
         {
           "$match": {
-            "fiscal_year": {
-              "$in": [
-                "2012-2013",
-                "2013-2014",
-                "2014-2015"
-              ]
-            },
             "is_duplicate_row": false
           }
         },
@@ -141,7 +134,7 @@
         }
       ]
     ],
-    "answer": "**FY14‑15 Q4** had the highest total spending, at **$28.80 B**.\n\n*Assumptions: FY Q4 corresponds to the calendar months April‑June.*",
+    "answer": "**FY14‑15 Q4** had the highest total spending, with a spend of **$28.80 B**.\n\n*Assumptions: FY Q4 corresponds to the calendar months April – June.*",
     "few_shot": true
   },
   {
@@ -152,26 +145,19 @@
     "pass": true,
     "why": "top-1 ordered",
     "error": null,
-    "latency_s": 3.34,
+    "latency_s": 3.04,
     "retries": 0,
     "pipelines": [
       [
         {
           "$match": {
-            "fiscal_year": {
-              "$in": [
-                "2012-2013",
-                "2013-2014",
-                "2014-2015"
-              ]
-            },
             "is_duplicate_row": false
           }
         },
         {
           "$group": {
             "_id": {
-              "quarter": "$calendar_quarter",
+              "q": "$calendar_quarter",
               "year": "$calendar_year"
             },
             "spend": {
@@ -189,23 +175,30 @@
         }
       ]
     ],
-    "answer": "**Q2 FY 2014‑15 (April – June 2015) had the highest spending: $28.80 B.**  \n\n*Assumptions: FY Q2 = calendar Q2 (Apr‑Jun).*",
-    "few_shot": false
+    "answer": "**Q2 2015 (April – June 2015) had the highest total spending: $28.80 B.**  \n\n*Assumptions: Calendar Q2 = Apr‑Jun; spend is the sum of all purchase‑order amounts (duplicates excluded).*",
+    "few_shot": true
   },
   {
     "id": 6,
     "set": "given",
     "lang": "en",
     "question": "What are the 5 most frequently ordered line items?",
-    "pass": true,
-    "why": "top-5 ordered",
+    "pass": false,
+    "why": "ranking: got [{'_id': 'medical supplies', 'orderCount': 3690}, {'_id': 'contract', 'orderCount': 3100}, {'_id': 'toner', 'orderCount': 1551}]",
     "error": null,
-    "latency_s": 3.55,
+    "latency_s": 5.78,
     "retries": 0,
     "pipelines": [
       [
         {
           "$match": {
+            "fiscal_year": {
+              "$in": [
+                "2012-2013",
+                "2013-2014",
+                "2014-2015"
+              ]
+            },
             "is_duplicate_row": false,
             "item_name_normalized": {
               "$ne": null
@@ -215,14 +208,21 @@
         {
           "$group": {
             "_id": "$item_name_normalized",
-            "lines": {
-              "$sum": 1
+            "orderCount": {
+              "$addToSet": "$po_key"
+            }
+          }
+        },
+        {
+          "$project": {
+            "orderCount": {
+              "$size": "$orderCount"
             }
           }
         },
         {
           "$sort": {
-            "lines": -1
+            "orderCount": -1
           }
         },
         {
@@ -230,7 +230,7 @@
         }
       ]
     ],
-    "answer": "**Top 5 most frequently ordered line items**\n\n| Rank | Line item | Orders |\n|------|-----------|--------|\n| 1 | medical supplies | 3,839 |\n| 2 | contract | 3,103 |\n| 3 | toner | 1,899 |\n| 4 | ew (expert witness) | 1,606 |\n| 5 | office supplies | 1,571 |\n\n*Assumptions*: “Orders” = distinct line‑item occurrences across all purchase orders.",
+    "answer": "**Top 5 line items by purchase‑order count (FY 2012‑13 – FY 2014‑15)**  \n\n| Rank | Line item | Purchase orders |\n|------|-----------|-----------------|\n| 1 | medical supplies | 3,690 |\n| 2 | contract | 3,100 |\n| 3 | toner | 1,551 |\n| 4 | office supplies | 1,494 |\n| 5 | ew (expert witness) | 1,379 |\n\n*Assumptions: “orderCount” reflects distinct department + PO number combinations; duplicate rows have been excluded.*",
     "few_shot": true
   },
   {
@@ -241,7 +241,7 @@
     "pass": true,
     "why": "set (order-insensitive)",
     "error": null,
-    "latency_s": 4.31,
+    "latency_s": 6.28,
     "retries": 0,
     "pipelines": [
       [
@@ -268,7 +268,7 @@
         }
       ]
     ],
-    "answer": "**Total spend per fiscal year**\n\n| Fiscal Year | Total Spend |\n|-------------|-------------|\n| 2012‑2013 | $61.88B |\n| 2013‑2014 | $42.46B |\n| 2014‑2015 | $46.84B |\n\n*Assumptions: Fiscal years run July 1 – June 30 (e.g., FY 2012‑2013 = July 2012 – June 2013).*",
+    "answer": "**Total spend per fiscal year**\n\n| Fiscal Year | Spend |\n|-------------|-------|\n| 2012‑2013 | $61.88B |\n| 2013‑2014 | $42.46B |\n| 2014‑2015 | $46.84B |\n\n*Assumptions: FY 2012‑2013 runs July 2012 – June 2013, FY 2013‑2014 runs July 2013 – June 2014, FY 2014‑2015 runs July 2014 – June 2015.*",
     "few_shot": false
   },
   {
@@ -279,12 +279,19 @@
     "pass": true,
     "why": "top-5 ordered",
     "error": null,
-    "latency_s": 28.91,
+    "latency_s": 5.1,
     "retries": 0,
     "pipelines": [
       [
         {
           "$match": {
+            "fiscal_year": {
+              "$in": [
+                "2012-2013",
+                "2013-2014",
+                "2014-2015"
+              ]
+            },
             "is_duplicate_row": false
           }
         },
@@ -306,7 +313,7 @@
         }
       ]
     ],
-    "answer": "**Top 5 departments by total spending**\n\n| Rank | Department (California State) | Total Spend |\n|------|------------------------------|-------------|\n| 1 | Health Care Services, Department of | $99.76B |\n| 2 | Public Health, Department of | $5.62B |\n| 3 | Social Services, Department of | $5.57B |\n| 4 | Corrections and Rehabilitation, Department of | $4.69B |\n| 5 | State Hospitals, Department of | $4.55B |\n\n*Assumptions*: Spend reflects distinct purchase orders (duplicates excluded). Health Care Services dominates the rankings.",
+    "answer": "**Top 5 departments by total procurement spend (FY 2012‑13 to FY 2014‑15)**  \n\n| Rank | Department | Total Spend |\n|------|------------|------------|\n| 1 | Health Care Services, Department of | $99.76B |\n| 2 | Public Health, Department of | $5.62B |\n| 3 | Social Services, Department of | $5.57B |\n| 4 | Corrections and Rehabilitation, Department of | $4.69B |\n| 5 | State Hospitals, Department of | $4.55B |\n\n*Assumptions: Spend totals are summed across distinct department‑PO combinations; duplicate rows are excluded.*",
     "few_shot": false
   },
   {
@@ -317,7 +324,7 @@
     "pass": true,
     "why": "top-3 ordered",
     "error": null,
-    "latency_s": 3.56,
+    "latency_s": 4.97,
     "retries": 0,
     "pipelines": [
       [
@@ -345,7 +352,7 @@
         }
       ]
     ],
-    "answer": "**Top 3 suppliers by spend in FY 2014‑2015**\n\n| Rank | Supplier | Spend |\n|------|----------|-------|\n| 1 | Fresno‑Kings‑Madera Regional Health Authority | $3.51 B |\n| 2 | Unknown (placeholder) | $2.99 B |\n| 3 | Ventura County | $2.91 B |\n\n*Assumptions: FY 2014‑2015 runs from July 1 2014 to June 30 2015; “Unknown” indicates missing supplier data.*",
+    "answer": "**Top 3 suppliers in FY 2014‑2015 by spend**\n\n| Rank | Supplier | Spend |\n|------|----------|-------|\n| 1 | Fresno‑Kings‑Madera Regional Health Authority | $3.51 B |\n| 2 | Unknown (placeholder) | $2.99 B |\n| 3 | Ventura County | $2.91 B |\n\n*Assumptions: FY 2014‑2015 runs from July 1 2014 to June 30 2015; “Unknown” indicates missing supplier data.*",
     "few_shot": true
   },
   {
@@ -356,7 +363,7 @@
     "pass": true,
     "why": "set (order-insensitive)",
     "error": null,
-    "latency_s": 3.28,
+    "latency_s": 5.39,
     "retries": 0,
     "pipelines": [
       [
@@ -383,7 +390,7 @@
         }
       ]
     ],
-    "answer": "**Spending by acquisition type**\n\n| Acquisition type | Spend |\n|------------------|-------|\n| NON‑IT Services | $140.59B |\n| NON‑IT Goods | $4.56B |\n| IT Services | $4.45B |\n| IT Goods | $1.57B |\n| IT Telecommunications | $13.61M |\n\n*Assumptions*: “Spend” reflects total dollars after any adjustments; acquisition types are mutually exclusive.",
+    "answer": "**Spending by acquisition type (total ≈ $151.18 B):**\n\n| Acquisition type | Spend | Share of total |\n|------------------|-------|----------------|\n| NON‑IT Services | $140.59 B | 93 % |\n| NON‑IT Goods | $4.56 B | 3 % |\n| IT Services | $4.45 B | 3 % |\n| IT Goods | $1.57 B | 1 % |\n| IT Telecommunications | $13.61 M | < 0.01 % |\n\n*Assumptions: spend values are as reported; totals are the sum of the listed rows.*",
     "few_shot": false
   },
   {
@@ -394,13 +401,20 @@
     "pass": true,
     "why": "scalar",
     "error": null,
-    "latency_s": 3.37,
+    "latency_s": 4.75,
     "retries": 0,
     "pipelines": [
       [
         {
           "$match": {
             "calcard": true,
+            "fiscal_year": {
+              "$in": [
+                "2012-2013",
+                "2013-2014",
+                "2014-2015"
+              ]
+            },
             "is_duplicate_row": false
           }
         },
@@ -410,16 +424,9 @@
             "line_items": {
               "$sum": 1
             },
-            "total_spend": {
+            "total_spent": {
               "$sum": "$total_price"
             }
-          }
-        },
-        {
-          "$project": {
-            "_id": 0,
-            "line_items": 1,
-            "total_spend": 1
           }
         },
         {
@@ -427,7 +434,7 @@
         }
       ]
     ],
-    "answer": "**Total CalCard spend:** $28.56 M  \n**Total line items:** 5,353  \n\n*Assumptions:* “Line items” are distinct rows in the dataset; spend includes all CalCard transactions as reported.",
+    "answer": "**Spent using CalCard:** $28.56 M  \n**Number of line items:** 5,353  \n\n*Assumptions:* FY2012‑13 through FY2014‑15 includes all calendar years within those fiscal periods.",
     "few_shot": false
   },
   {
@@ -438,7 +445,7 @@
     "pass": true,
     "why": "set (order-insensitive)",
     "error": null,
-    "latency_s": 5.51,
+    "latency_s": 3.68,
     "retries": 0,
     "pipelines": [
       [
@@ -460,7 +467,7 @@
         }
       ]
     ],
-    "answer": "**≈ 2.6 % of total procurement spend was contract spend (purchases with an LPA number).**  \n\n*Assumptions:* contract spend = rows where _id = true ($3.99 B); total spend = sum of contract and non‑contract rows ($147.19 B + $3.99 B ≈ $151.18 B).  \n\n*Share* = $3.99 B ÷ $151.18 B ≈ 0.0264 → **2.6 %**.",
+    "answer": "**≈ 2.7 % of total spending was contract spend (orders with an LPA number).**  \n\n*Assumptions:* contract spend = $3.99 B; total spend = $147.19 B; share = 3.99 B ÷ 147.19 B ≈ 0.027 → 2.7 %.",
     "few_shot": false
   },
   {
@@ -471,7 +478,7 @@
     "pass": true,
     "why": "set (order-insensitive)",
     "error": null,
-    "latency_s": 2.67,
+    "latency_s": 2.66,
     "retries": 0,
     "pipelines": [
       [
@@ -500,7 +507,7 @@
         }
       ]
     ],
-    "answer": "**Department of Corrections and Rehabilitation – IT Goods spend by fiscal year**\n\n| Fiscal Year | Spend |\n|-------------|-------|\n| 2012‑2013 | $23.44M |\n| 2013‑2014 | $63.60M |\n| 2014‑2015 | $71.27M |\n\n*Assumptions: fiscal years are reported as FY 2012‑13, FY 2013‑14, FY 2014‑15.*",
+    "answer": "**Department of Corrections and Rehabilitation – IT Goods spend by fiscal year**\n\n| Fiscal Year | Spend |\n|-------------|-------|\n| 2012‑2013 | $23.44M |\n| 2013‑2014 | $63.60M |\n| 2014‑2015 | $71.27M |\n\n*Assumptions: FY 2012‑13 runs July 2012–June 2013, FY 2013‑14 runs July 2013–June 2014, FY 2014‑15 runs July 2014–June 2015.*",
     "few_shot": true
   },
   {
@@ -511,7 +518,7 @@
     "pass": true,
     "why": "step1 top-1 ordered; step2 ok",
     "error": null,
-    "latency_s": 5.76,
+    "latency_s": 13.63,
     "retries": 0,
     "pipelines": [
       [
@@ -576,7 +583,7 @@
         }
       ]
     ],
-    "answer": "**Answer:** The UNSPSC segment with the highest spend is **Healthcare Services** with $111.68 B, and its top supplier is **Health Net Community Solutions, Inc.** with $13.59 B.\n\n*Assumptions:* Spend totals cover all California purchase orders from FY 2012‑13 through FY 2014‑15; “top supplier” is the one with the highest aggregate spend within that segment.",
+    "answer": "**Answer:** The UNSPSC segment with the highest spend was **Healthcare Services** with $111.68 B, and its top supplier was **Health Net Community Solutions, Inc.** with $13.59 B.\n\n*Assumptions:* Spend totals are for FY 2012‑13 through FY 2014‑15 and include all purchase orders in California.",
     "few_shot": false
   },
   {
@@ -587,7 +594,7 @@
     "pass": true,
     "why": "scalar",
     "error": null,
-    "latency_s": 4.99,
+    "latency_s": 4.9,
     "retries": 0,
     "pipelines": [
       [
@@ -621,7 +628,7 @@
         }
       ]
     ],
-    "answer": "**Average order value in FY 2012‑2013:** $934,157.75 per order (based on 66,238 orders).\n\n*Assumptions:* FY 2012‑13 runs from July 1 2012 to June 30 2013; “orders” are distinct department + PO number.",
+    "answer": "**Average order value in FY 2012‑2013:** $934,157.75 per purchase order (based on 66,238 orders).\n\n*Assumptions:* FY 2012‑13 runs from July 1 2012 to June 30 2013; “orders” are distinct department + PO numbers.",
     "few_shot": true
   },
   {
@@ -632,12 +639,19 @@
     "pass": true,
     "why": "set (order-insensitive)",
     "error": null,
-    "latency_s": 2.97,
+    "latency_s": 6.01,
     "retries": 0,
     "pipelines": [
       [
         {
           "$match": {
+            "fiscal_year": {
+              "$in": [
+                "2012-2013",
+                "2013-2014",
+                "2014-2015"
+              ]
+            },
             "is_duplicate_row": false,
             "is_small_business": true
           }
@@ -660,7 +674,7 @@
         }
       ]
     ],
-    "answer": "**Spent with small businesses:**  \n- FY 2012‑2013: $1.59 B  \n- FY 2013‑2014: $1.94 B  \n- FY 2014‑2015: $2.51 B  \n\n*Assumptions: FY 2012‑2013 = July 2012 – June 2013, etc.; spend reflects distinct small‑business orders.*",
+    "answer": "**Spend with small businesses by fiscal year**\n\n| Fiscal Year | Small‑business spend |\n|-------------|----------------------|\n| FY 2012‑13 | $1.59 B |\n| FY 2013‑14 | $1.94 B |\n| FY 2014‑15 | $2.51 B |\n\n*Assumptions: FY Q4 = Apr‑Jun, FY Q1 = Jul‑Sep; spend figures are totals for each fiscal year as provided.*",
     "few_shot": false
   },
   {
@@ -671,7 +685,7 @@
     "pass": true,
     "why": "top-3 ordered",
     "error": null,
-    "latency_s": 3.0,
+    "latency_s": 4.11,
     "retries": 0,
     "pipelines": [
       [
@@ -699,7 +713,7 @@
         }
       ]
     ],
-    "answer": "**أعلى ثلاث جهات حكومية إنفاقاً في السنة المالية 2013‑2014:**\n\n| الترتيب | الجهة | الإنفاق |\n|--------|-------|----------|\n| 1 | Health Care Services, Department of | $28.46B |\n| 2 | Corrections and Rehabilitation, Department of | $2.49B |\n| 3 | Transportation, Department of | $1.56B |\n\n*Assumptions: الإنفاق يُحسب على أساس إجمالي الصفقات (الطلبات) للجهة في السنة المالية 2013‑2014؛ لا تشمل الصفوف المكررة.*",
+    "answer": "**أعلى ثلاث جهات حكومية إنفاقاً في السنة المالية 2013‑2014:**\n\n| الترتيب | الجهة | الإنفاق |\n|--------|-------|----------|\n| 1 | وزارة خدمات الرعاية الصحية (Health Care Services, Department of) | $28.46B |\n| 2 | وزارة الإصلاح وإعادة التأهيل (Corrections and Rehabilitation, Department of) | $2.49B |\n| 3 | وزارة النقل (Transportation, Department of) | $1.56B |\n\n*Assumptions: الإنفاق يُحسب على أساس السنة المالية (FY) 2013‑2014؛ لا تشمل الصفوف المكررة.*",
     "few_shot": false
   },
   {
@@ -710,7 +724,7 @@
     "pass": true,
     "why": "top-1 ordered",
     "error": null,
-    "latency_s": 3.38,
+    "latency_s": 4.5,
     "retries": 0,
     "pipelines": [
       [
@@ -737,7 +751,7 @@
         }
       ]
     ],
-    "answer": "**FY14‑15 Q4** had the highest spending at **$28.80 B**.\n\n*Assumptions: FY Q4 corresponds to the calendar months April – June.*",
+    "answer": "**FY14‑15 Q4** had the highest total spending, at **$28.80 B**.\n\n*Assumptions: FY Q4 corresponds to the calendar months April‑June.*",
     "few_shot": false
   },
   {
@@ -745,34 +759,13 @@
     "set": "extra",
     "lang": "en (partial department name)",
     "question": "How much did the Department of Corrections spend in fiscal year 2014-2015?",
-    "pass": true,
-    "why": "scalar",
-    "error": null,
-    "latency_s": 21.48,
+    "pass": false,
+    "why": "exception",
+    "error": "BadRequestError: Error code: 400 - {'error': {'message': \"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\", 'type': 'invalid_request_error', 'code': 'output_parse_failed', 'failed_generation': 'We need total spend for department Corrections and Rehabilitation, Department of in FY 2014-2015. Use match is_duplicate_row false, department_name exact, fiscal_year \"2014-2015\". Then group sum total_price. Submit pipeline.'}}",
+    "latency_s": 10.78,
     "retries": 0,
-    "pipelines": [
-      [
-        {
-          "$match": {
-            "department_name": "Corrections and Rehabilitation, Department of",
-            "fiscal_year": "2014-2015",
-            "is_duplicate_row": false
-          }
-        },
-        {
-          "$group": {
-            "_id": null,
-            "spend": {
-              "$sum": "$total_price"
-            }
-          }
-        },
-        {
-          "$limit": 200
-        }
-      ]
-    ],
-    "answer": "**The Department of Corrections spent $1.30 B in fiscal year 2014‑2015.**  \n\n*Assumptions: FY 2014‑15 runs from July 1 2014 to June 30 2015; spend is the total amount recorded for that period.*",
+    "pipelines": [],
+    "answer": "",
     "few_shot": false
   },
   {
@@ -783,10 +776,10 @@
     "pass": true,
     "why": "intent=out_of_scope (expected out_of_scope)",
     "error": null,
-    "latency_s": 0.83,
+    "latency_s": 0.86,
     "retries": 0,
     "pipelines": [],
-    "answer": "I’m sorry, but I can only answer questions about California state procurement data. For example, you could ask: “What was the total spend on IT equipment in FY2014‑15?”",
+    "answer": "I’m sorry, but I can only answer questions about the California state procurement data. For example, you could ask “What was the total spend on office supplies in FY2013?”",
     "few_shot": false
   },
   {
@@ -797,10 +790,10 @@
     "pass": true,
     "why": "intent=chit_chat (expected chit_chat)",
     "error": null,
-    "latency_s": 1.29,
+    "latency_s": 0.74,
     "retries": 0,
     "pipelines": [],
-    "answer": "Hello! I can answer questions about California state purchase orders, such as spend, orders, departments, suppliers, items, acquisition methods, UNSPSC segments, CalCard usage, small business/DVBE flags, and dates. Feel free to ask!",
+    "answer": "I can answer questions about California state purchase orders, such as total spend, top suppliers, breakdowns by department, dates, and more. Just let me know what you’d like to explore!",
     "few_shot": false
   },
   {
@@ -811,7 +804,7 @@
     "pass": true,
     "why": "scalar",
     "error": null,
-    "latency_s": 2.4,
+    "latency_s": 3.03,
     "retries": 0,
     "pipelines": [
       [
@@ -833,7 +826,7 @@
         }
       ]
     ],
-    "answer": "**5,673 orders** were created in March 2014.  \n\n*Assumptions: “orders” refers to distinct department + PO number combinations.*",
+    "answer": "**5,673 orders** were created in March 2014.  \n\n*Assumptions: “orders” refers to distinct department + PO number combinations.*",
     "few_shot": false
   },
   {
@@ -844,12 +837,13 @@
     "pass": true,
     "why": "scalar",
     "error": null,
-    "latency_s": 3.04,
+    "latency_s": 2.55,
     "retries": 0,
     "pipelines": [
       [
         {
           "$match": {
+            "is_duplicate_row": false,
             "year_month": "2015-03"
           }
         },
@@ -866,7 +860,7 @@
         }
       ]
     ],
-    "answer": "**5,924 orders** were created in March 2015.  \n\n*Assumptions: “orders” refers to distinct department + PO number combinations.*",
+    "answer": "**5,924 orders** were recorded in March 2015.\n\n*Assumptions: “orders” refer to distinct department + PO number combinations.*",
     "few_shot": false
   },
   {
@@ -877,7 +871,7 @@
     "pass": true,
     "why": "scalar",
     "error": null,
-    "latency_s": 2.83,
+    "latency_s": 5.49,
     "retries": 0,
     "pipelines": [
       [
@@ -890,7 +884,7 @@
         {
           "$group": {
             "_id": null,
-            "spend": {
+            "total_spend": {
               "$sum": "$total_price"
             }
           }
@@ -900,7 +894,7 @@
         }
       ]
     ],
-    "answer": "**Total spend in FY 2014‑2015:** $46.84 B  \n\n*Assumptions:* FY 2014‑2015 runs from July 1 2014 to June 30 2015.",
+    "answer": "**Total spend in FY 2014‑2015:** $46.84 B  \n\n*Assumptions:* FY 2014‑2015 runs from July 1 2014 to June 30 2015.",
     "few_shot": false
   },
   {
@@ -908,22 +902,31 @@
     "set": "extra",
     "lang": "en (follow-up of 108)",
     "question": "break that down by acquisition type",
-    "pass": true,
-    "why": "set (order-insensitive)",
+    "pass": false,
+    "why": "set: got [{'_id': 'NON-IT Services', 'lines': 68193, 'spend': 140589259405.73}, {'_id': 'NON-IT Goods', 'lines': 213934, 'spend': 4558575479.66}, {'_id': 'IT Services', 'lines': 11157, 'spend': 4449069898.3}]",
     "error": null,
-    "latency_s": 4.11,
+    "latency_s": 4.48,
     "retries": 0,
     "pipelines": [
       [
         {
           "$match": {
-            "fiscal_year": "2014-2015",
+            "fiscal_year": {
+              "$in": [
+                "2012-2013",
+                "2013-2014",
+                "2014-2015"
+              ]
+            },
             "is_duplicate_row": false
           }
         },
         {
           "$group": {
             "_id": "$acquisition_type",
+            "lines": {
+              "$sum": 1
+            },
             "spend": {
               "$sum": "$total_price"
             }
@@ -939,7 +942,7 @@
         }
       ]
     ],
-    "answer": "**FY 2014‑2015 total spend by acquisition type**\n\n| Acquisition Type      | Spend |\n|-----------------------|-------|\n| NON‑IT Services       | $42.58B |\n| IT Services           | $2.06B |\n| NON‑IT Goods          | $1.68B |\n| IT Goods              | $522.48M |\n| IT Telecommunications | $13.61M |\n\n*Assumptions: FY 2014‑2015 runs from July 1 2014 to June 30 2015; spend figures are net totals (including any negative adjustments) and duplicate rows have been excluded.*",
+    "answer": "**Acquisition‑type spend and order count**\n\n| Acquisition Type | Orders (lines) | Spend |\n|------------------|----------------|-------|\n| NON‑IT Services | 68,193 | $140.59B |\n| NON‑IT Goods | 213,934 | $4.56B |\n| IT Services | 11,157 | $4.45B |\n| IT Goods | 50,486 | $1.57B |\n| IT Telecommunications | 147 | $13.61M |\n\n*Assumptions*: “lines” represent distinct department + PO number orders; spend totals include all line‑item adjustments.",
     "few_shot": false
   },
   {
@@ -950,7 +953,7 @@
     "pass": true,
     "why": "set (order-insensitive)",
     "error": null,
-    "latency_s": 5.68,
+    "latency_s": 2.87,
     "retries": 0,
     "pipelines": [
       [
@@ -978,7 +981,7 @@
         }
       ]
     ],
-    "answer": "**الإجمالي المصروف باستخدام CalCard لكل سنة مالية**\n\n| السنة المالية | المصروف |\n|---------------|----------|\n| 2012‑2013 | $8.45M |\n| 2013‑2014 | $8.95M |\n| 2014‑2015 | $11.15M |\n\n*Assumptions: المصروف يُحسب من أوامر الشراء المميزة (department + PO) ولا يشمل الصفوف المكررة.*",
+    "answer": "**إجمالي الإنفاق باستخدام بطاقة CalCard لكل سنة مالية**\n\n| السنة المالية | الإنفاق |\n|---------------|----------|\n| FY 2012‑13 | $8.45M |\n| FY 2013‑14 | $8.95M |\n| FY 2014‑15 | $11.15M |\n\n*الافتراضات:* تم احتساب الإنفاق من إجمالي المبالغ المذكورة لكل سنة مالية دون تعديل إضافي.",
     "few_shot": false
   },
   {
@@ -989,7 +992,7 @@
     "pass": true,
     "why": "step1 top-1 ordered; step2 ok",
     "error": null,
-    "latency_s": 8.14,
+    "latency_s": 6.39,
     "retries": 0,
     "pipelines": [
       [
@@ -1007,23 +1010,22 @@
         },
         {
           "$group": {
-            "_id": {
-              "department": "$department_name",
-              "po_key": "$po_key"
+            "_id": "$department_name",
+            "orders": {
+              "$addToSet": "$po_key"
             }
           }
         },
         {
-          "$group": {
-            "_id": "$_id.department",
-            "order_count": {
-              "$sum": 1
+          "$project": {
+            "orders": {
+              "$size": "$orders"
             }
           }
         },
         {
           "$sort": {
-            "order_count": -1
+            "orders": -1
           }
         },
         {
@@ -1065,7 +1067,7 @@
         }
       ]
     ],
-    "answer": "**Department:** Corrections and Rehabilitation, Department of (36,040 orders)  \n**Most‑frequently ordered item:** “bread” (appears on 314 line items)\n\n*Assumptions:* Orders are distinct department + PO numbers; “bread” is the exact text recorded in the item description.",
+    "answer": "**The Department of Corrections and Rehabilitation placed the most orders (36,040) and its most frequently ordered item was “bread” (appearing on 314 line items).**  \n\n*Assumptions: Orders are distinct department + PO numbers; “most frequently ordered item” is based on line‑item count.*",
     "few_shot": false
   },
   {
@@ -1076,29 +1078,28 @@
     "pass": true,
     "why": "set (order-insensitive)",
     "error": null,
-    "latency_s": 6.32,
-    "retries": 1,
+    "latency_s": 2.82,
+    "retries": 0,
     "pipelines": [
       [
         {
           "$match": {
-            "calendar_year": 2013,
-            "is_duplicate_row": false
+            "calendar_year": 2013
           }
         },
         {
           "$group": {
-            "_id": {
-              "month": "$year_month",
-              "po_key": "$po_key"
+            "_id": "$year_month",
+            "orders": {
+              "$addToSet": "$po_key"
             }
           }
         },
         {
-          "$group": {
-            "_id": "$_id.month",
+          "$project": {
+            "_id": 1,
             "orders": {
-              "$sum": 1
+              "$size": "$orders"
             }
           }
         },
@@ -1112,7 +1113,7 @@
         }
       ]
     ],
-    "answer": "**Orders per month in calendar 2013**\n\n| Month | Orders |\n|-------|--------|\n| Jan 2013 | 4,908 |\n| Feb 2013 | 4,296 |\n| Mar 2013 | 5,629 |\n| Apr 2013 | 5,220 |\n| May 2013 | 7,140 |\n| Jun 2013 | 8,331 |\n| Jul 2013 | 5,752 |\n| Aug 2013 | 5,159 |\n| Sep 2013 | 5,632 |\n| Oct 2013 | 5,331 |\n| Nov 2013 | 4,152 |\n| Dec 2013 | 4,991 |\n\n*Assumptions: “Orders” are distinct department + PO number rows; duplicate rows are excluded.*",
+    "answer": "**Orders per month in calendar year 2013**\n\n| Month | Orders |\n|-------|--------|\n| Jan 2013 | 4,908 |\n| Feb 2013 | 4,296 |\n| Mar 2013 | 5,629 |\n| Apr 2013 | 5,220 |\n| May 2013 | 7,140 |\n| Jun 2013 | 8,331 |\n| Jul 2013 | 5,752 |\n| Aug 2013 | 5,159 |\n| Sep 2013 | 5,632 |\n| Oct 2013 | 5,331 |\n| Nov 2013 | 4,152 |\n| Dec 2013 | 4,991 |\n\n*Assumptions: “orders” represent distinct department + PO number combinations; duplicate rows are excluded.*",
     "few_shot": false
   },
   {
@@ -1123,7 +1124,7 @@
     "pass": true,
     "why": "scalar",
     "error": null,
-    "latency_s": 3.43,
+    "latency_s": 2.5,
     "retries": 0,
     "pipelines": [
       [
@@ -1147,7 +1148,49 @@
         }
       ]
     ],
-    "answer": "**$213.43 M** was spent with disabled veteran business enterprises (DVBE) in fiscal year 2014‑2015.\n\n*Assumptions: fiscal year FY 2014‑15 runs from July 1 2014 to June 30 2015; spend reflects total net amount after any adjustments.*",
+    "answer": "**$213.43 M** was spent with Disabled Veteran Business Enterprises (DVBE) in fiscal year 2014‑2015.  \n\n*Assumptions: spend reflects total purchase‑order amount for FY 2014‑15; duplicate rows have been excluded.*",
+    "few_shot": false
+  },
+  {
+    "id": 114,
+    "set": "extra",
+    "lang": "ar (meta: date range)",
+    "question": "البيانات الموجوده عندك, من تاريخ كم الى كم؟",
+    "pass": true,
+    "why": "intent=meta_question (expected meta_question)",
+    "error": null,
+    "latency_s": 1.68,
+    "retries": 0,
+    "pipelines": [],
+    "answer": "البيانات المتوفرة هي سجلات شراء لولاية كاليفورنيا، من 2012-07-02 إلى 2015-06-30 (السنوات المالية 2012-13 إلى 2014-15) — 346,018 سطر شراء (كل سطر = بند واحد ضمن طلب شراء). تشمل الحقول: الجهة الحكومية، المورد، اسم/وصف الصنف، الكمية والسعر والإجمالي، تاريخ الإنشاء، نوع ووسيلة الشراء، فئة UNSPSC، وأعلام مثل المنشآت الصغيرة وبطاقة CalCard. مثال على سؤال يمكنك طرحه: \"ما هو الربع الأعلى إنفاقاً؟\"",
+    "few_shot": false
+  },
+  {
+    "id": 115,
+    "set": "extra",
+    "lang": "en (meta: date range)",
+    "question": "What date range does this dataset cover?",
+    "pass": true,
+    "why": "intent=meta_question (expected meta_question)",
+    "error": null,
+    "latency_s": 0.64,
+    "retries": 0,
+    "pipelines": [],
+    "answer": "The data covers California state purchases from 2012-07-02 to 2015-06-30 (fiscal years 2012-13 to 2014-15) — 346,018 purchase line items (each row is one line within a purchase order). Fields include department, supplier, item name/description, quantity/unit price/total, creation date, acquisition type & method, UNSPSC category, and flags like small-business and CalCard. Try asking, e.g. \"Which quarter had the highest spending?\"",
+    "few_shot": false
+  },
+  {
+    "id": 116,
+    "set": "extra",
+    "lang": "en (meta: fields)",
+    "question": "What kind of fields or information does this data include?",
+    "pass": true,
+    "why": "intent=meta_question (expected meta_question)",
+    "error": null,
+    "latency_s": 0.86,
+    "retries": 0,
+    "pipelines": [],
+    "answer": "The data covers California state purchases from 2012-07-02 to 2015-06-30 (fiscal years 2012-13 to 2014-15) — 346,018 purchase line items (each row is one line within a purchase order). Fields include department, supplier, item name/description, quantity/unit price/total, creation date, acquisition type & method, UNSPSC category, and flags like small-business and CalCard. Try asking, e.g. \"Which quarter had the highest spending?\"",
     "few_shot": false
   }
 ]
