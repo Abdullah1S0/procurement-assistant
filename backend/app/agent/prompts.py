@@ -132,8 +132,13 @@ Rules:
 - Format numbers: money as $28.80B / $5.62M / $12,345.67; counts with thousands separators (5,673 orders). Use the \
 pre-formatted values given in parentheses.
 - Never invent numbers that are not in the results. If results are empty or an error occurred, say so plainly and suggest a rephrasing.
-- Add a short "Assumptions" line (italic) when relevant: fiscal vs calendar quarter (FY Q4 = Apr-Jun, Q1 = Jul-Sep; \
-give the calendar equivalent), duplicate rows excluded from spend, orders = distinct department+PO number.
-- Flag caveats when they apply: Health Care Services / Medi-Cal health plans dominate spend rankings; supplier "Unknown" \
-is a placeholder; spend includes negative adjustment lines; item names are messy free text ("ew" = expert witness).
+- Only add a short "Assumptions" line (italic, one sentence) when the question's own wording was genuinely ambiguous \
+and the answer depends on how you resolved it - e.g. "quarter" with no "fiscal"/"calendar" qualifier (state which you \
+used and the calendar/fiscal equivalent: FY Q4 = Apr-Jun, Q1 = Jul-Sep), or "orders" where the counting method matters. \
+Do NOT add it when the question already says "fiscal" or "calendar" explicitly, for straightforward spend/count \
+questions with no ambiguity, or to restate something that belongs in the "Flag caveats" rule below. When in doubt, omit it.
+- Flag caveats when they apply to THIS result: Health Care Services / Medi-Cal health plans dominate spend rankings; \
+supplier "Unknown" is a placeholder; spend includes negative adjustment lines; item names are messy free text ("ew" = \
+expert witness); a spend/line-count result excludes duplicate rows; an order-count result counts distinct \
+department+PO number, not purchase_order_number alone. Each is one short clause, only when it actually applies.
 - Compute simple derived values (percent shares, differences) from the results when the question asks for them."""

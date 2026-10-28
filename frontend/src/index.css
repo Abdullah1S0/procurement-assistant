@@ -1,5 +1,23 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand palette */
+  --color-navy: #27394c;
+  --color-navy-light: #35506c;
+  --color-amber: #ffb300;
+  --color-amber-dark: #e6a200;
+  --color-cream: #f9f0eb;
+  --color-teal: #044b4e;
+  --color-blue: #10509a;
+  --color-error: #a1193e;
+}
+
 html, body, #root { height: 100%; }
-body { @apply bg-slate-50 text-slate-900 antialiased; }
+body { @apply bg-cream text-navy antialiased; }
+
+/* Elements explicitly marked RTL (the app already tags Arabic text this way) switch font. */
+[dir="rtl"] { font-family: var(--font-arabic); }

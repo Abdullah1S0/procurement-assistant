@@ -107,15 +107,19 @@ def _is_retryable(exc: Exception) -> tuple[bool, float | None]:
     return False, None
 
 
+_FORCED_TOOL_CALL_ERROR_CODES = frozenset({"tool_use_failed", "output_parse_failed"})
+
+
 def tool_use_failed_text(exc: Exception) -> str | None:
-    """Return the model's `failed_generation` text if `exc` is a Groq 400 "tool_use_failed" error
-    (a forced `tool_choice`, but the model answered in plain text instead of calling a tool).
-    Returns None for any other exception."""
+    """Return the model's `failed_generation` text if `exc` is a Groq 400 error from a forced
+    `tool_choice` where the model didn't produce a valid tool call: "tool_use_failed" (answered in
+    plain text) or "output_parse_failed" (emitted something that couldn't be parsed as the tool
+    call, e.g. stray reasoning text). Returns None for any other exception."""
     body = getattr(exc, "body", None)
     if not isinstance(body, dict):
         return None
     error = body.get("error")
-    if not isinstance(error, dict) or error.get("code") != "tool_use_failed":
+    if not isinstance(error, dict) or error.get("code") not in _FORCED_TOOL_CALL_ERROR_CODES:
         return None
     return error.get("failed_generation") or None
 
@@ -139,3 +143,46 @@ def invoke_with_backoff(runnable: Runnable, inputs: Any) -> Any:
                         s.llm_max_retries, delay)
             time.sleep(delay)
             attempt += 1
+
+
+class ForcedToolCallFailed(Exception):
+    """Raised by `invoke_forced_tool` when the model never produces a valid tool call, even after
+    retrying once with `tool_choice="auto"`. Carries the model's own text in `.text` for logging
+    only - callers must never show it to the user as-is (it can contain hallucinated content)."""
+
+    def __init__(self, text: str) -> None:
+        super().__init__(text)
+        self.text = text
+
+
+def invoke_forced_tool(llm: BaseChatModel, tools: list[Any], tool_choice: str, messages: list[Any]) -> Any:
+    """Invoke `llm` bound to `tools` with a forced `tool_choice` (a tool name, or "required").
+
+    Groq's gpt-oss models occasionally fail to produce a valid tool call under a forced
+    `tool_choice` - answering in plain text ("tool_use_failed") or emitting something that doesn't
+    parse as the call, e.g. stray reasoning text ("output_parse_failed"). On either, retry once
+    with `tool_choice="auto"`. That retry can hit the exact same failure (e.g. malformed JSON
+    again), so it is guarded the same way, not left to raise uncaught. Returns an AIMessage with at
+    least one tool call on success; raises `ForcedToolCallFailed` if no attempt produced one.
+    """
+    try:
+        ai = invoke_with_backoff(llm.bind_tools(tools, tool_choice=tool_choice), messages)
+    except Exception as exc:  # noqa: BLE001
+        failed_text = tool_use_failed_text(exc)
+        if failed_text is None:
+            raise
+        try:
+            ai = invoke_with_backoff(llm.bind_tools(tools, tool_choice="auto"), messages)
+        except Exception as exc2:  # noqa: BLE001
+            retry_failed_text = tool_use_failed_text(exc2)
+            if retry_failed_text is None:
+                raise
+            raise ForcedToolCallFailed(retry_failed_text) from exc2
+        if not ai.tool_calls:
+            text = ai.content if isinstance(ai.content, str) and ai.content.strip() else failed_text
+            raise ForcedToolCallFailed(text or "")
+        return ai
+    if not ai.tool_calls:
+        text = ai.content if isinstance(ai.content, str) and ai.content.strip() else ""
+        raise ForcedToolCallFailed(text)
+    return ai

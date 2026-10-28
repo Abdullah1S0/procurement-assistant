@@ -71,30 +71,34 @@ export default function App() {
 
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')
   const rtlInput = isArabic(input)
+  // "UI language" for the sidebar: the most recent message's language, else the in-progress input.
+  const lastMsg = messages.at(-1)
+  const uiLang: 'en' | 'ar' =
+    lastMsg?.response?.language === 'ar' || isArabic(lastMsg?.text ?? '') || (!lastMsg && rtlInput) ? 'ar' : 'en'
 
   return (
     <div className="flex h-full">
-      <Sidebar fields={fields} health={health} />
+      <Sidebar fields={fields} health={health} uiLang={uiLang} onPickExample={(text) => setInput(text)} />
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
+        <header className="flex items-center justify-between bg-navy px-6 py-3 text-white">
           <div>
             <h1 className="text-base font-semibold">Procurement Assistant</h1>
-            <p className="text-xs text-slate-500">California state purchases · FY2012-13 → FY2014-15 · ask in English or Arabic</p>
+            <p className="text-xs text-white/70">California state purchases · FY2012-13 → FY2014-15 · ask in English or Arabic</p>
           </div>
           <button
             onClick={newChat}
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            className="rounded-full bg-amber px-4 py-1.5 text-sm font-medium text-navy transition hover:bg-amber-dark"
           >
             + New chat
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-cream">
           <div className="mx-auto max-w-4xl space-y-4 px-4 py-6">
             {!messages.length && (
               <div className="py-10 text-center">
-                <h2 className="text-xl font-semibold">Ask anything about state procurement</h2>
-                <p className="mt-1 text-sm text-slate-500">
+                <h2 className="text-xl font-semibold text-navy">Ask anything about state procurement</h2>
+                <p className="mt-1 text-sm text-navy/60">
                   Your question is turned into a MongoDB aggregation, executed, and explained.
                 </p>
               </div>
@@ -110,7 +114,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="border-t border-slate-200 bg-white">
+        <div className="border-t border-navy/10 bg-white">
           <div className="mx-auto max-w-4xl px-4 py-3">
             {!messages.length && examples.length > 0 && (
               <div className="mb-3 flex flex-wrap gap-2">
@@ -119,7 +123,7 @@ export default function App() {
                     key={e.text}
                     dir={e.lang === 'ar' ? 'rtl' : 'ltr'}
                     onClick={() => send(e.text)}
-                    className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
+                    className="rounded-full bg-navy/5 px-3 py-1 text-xs text-navy transition hover:bg-amber/20"
                   >
                     {e.text}
                   </button>
@@ -138,13 +142,13 @@ export default function App() {
                 onChange={(e) => setInput(e.target.value)}
                 dir={rtlInput ? 'rtl' : 'ltr'}
                 placeholder="e.g. Which quarter had the highest spending?  /  كم عدد الطلبات في مارس 2014؟"
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="flex-1 rounded-full border border-navy/15 px-4 py-2 text-sm text-navy outline-none focus:border-amber focus:ring-2 focus:ring-amber/30"
                 disabled={busy}
               />
               <button
                 type="submit"
                 disabled={busy || !input.trim()}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="rounded-full bg-amber px-5 py-2 text-sm font-medium text-navy transition hover:bg-amber-dark disabled:opacity-50"
               >
                 {busy ? 'Thinking…' : 'Send'}
               </button>

@@ -14,17 +14,17 @@ export function StepIndicator({ steps, running }: { steps: StepEvent[]; running:
             key={i}
             title={JSON.stringify(s.detail, null, 1)}
             className={`rounded-full px-2 py-0.5 ring-1 ${
-              failed ? 'bg-amber-50 text-amber-800 ring-amber-200' : 'bg-emerald-50 text-emerald-800 ring-emerald-200'
+              failed ? 'bg-blue/10 text-blue ring-blue/30' : 'bg-teal/10 text-teal ring-teal/30'
             }`}
           >
             {failed ? '↻' : '✓'} {s.label}
-            <span className="ml-1 text-slate-400">{s.ms >= 1000 ? `${(s.ms / 1000).toFixed(1)}s` : `${s.ms}ms`}</span>
+            <span className="ml-1 text-navy/40">{s.ms >= 1000 ? `${(s.ms / 1000).toFixed(1)}s` : `${s.ms}ms`}</span>
           </li>
         )
       })}
       {running && (
-        <li className="flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-700 ring-1 ring-indigo-200">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
+        <li className="flex items-center gap-1 rounded-full bg-amber/15 px-2 py-0.5 text-navy ring-1 ring-amber/40">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-amber" />
           {nextLabel(steps)}…
         </li>
       )}

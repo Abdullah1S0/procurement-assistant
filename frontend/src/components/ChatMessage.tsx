@@ -22,7 +22,7 @@ export function ChatMessage({ msg, onRetry }: { msg: Message; onRetry?: () => vo
   if (msg.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div dir={rtl ? 'rtl' : 'ltr'} className="max-w-[80%] rounded-2xl rounded-br-sm bg-indigo-600 px-4 py-2 text-white">
+        <div dir={rtl ? 'rtl' : 'ltr'} className="max-w-[80%] rounded-2xl rounded-br-sm bg-amber px-4 py-2 font-medium text-navy">
           {msg.text}
         </div>
       </div>
@@ -31,10 +31,10 @@ export function ChatMessage({ msg, onRetry }: { msg: Message; onRetry?: () => vo
   const r = msg.response
   return (
     <div className="flex justify-start">
-      <div className="w-full max-w-[90%] space-y-3 rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+      <div className="w-full max-w-[90%] space-y-3 rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-sm ring-1 ring-navy/10">
         <StepIndicator steps={msg.steps} running={msg.status === 'pending'} />
         {msg.status === 'error' && (
-          <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-rose-200">
+          <div className="rounded-lg bg-error/10 px-3 py-2 text-sm text-error ring-1 ring-error/30">
             {msg.text}
             {onRetry && (
               <button onClick={onRetry} className="ml-2 underline">
@@ -51,7 +51,7 @@ export function ChatMessage({ msg, onRetry }: { msg: Message; onRetry?: () => vo
             {r.chart && <ResultChart chart={r.chart} results={r.results} />}
             <Results response={r} />
             <QueryPanel results={r.results} />
-            <p className="text-xs text-slate-400" dir="ltr">
+            <p className="text-xs text-navy/40" dir="ltr">
               {(r.latency_ms / 1000).toFixed(1)}s
               {r.standalone_question && r.standalone_question !== msg.text ? ` · interpreted as: “${r.standalone_question}”` : ''}
             </p>
@@ -74,7 +74,7 @@ function Results({ response }: { response: ChatResponse }) {
             <button
               key={i}
               onClick={() => setTab(i)}
-              className={`rounded px-2 py-0.5 ${i === tab ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'}`}
+              className={`rounded-full px-2 py-0.5 ${i === tab ? 'bg-navy text-white' : 'bg-navy/5 text-navy/60'}`}
             >
               Step {i + 1}
             </button>

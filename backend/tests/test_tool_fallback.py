@@ -1,7 +1,10 @@
 """Groq tool_use_failed detection, Unicode space cleanup, and the dataset meta-reply."""
+import pytest
+from langchain_core.messages import AIMessage
+
 from app.agent.nodes.common import clean_text, safe_tool_failure_reply
 from app.db.schema import looks_like_meta_question, meta_reply, wants_sample_rows
-from app.llm import _retry_after_from_message, tool_use_failed_text
+from app.llm import ForcedToolCallFailed, _retry_after_from_message, invoke_forced_tool, tool_use_failed_text
 
 
 class _FakeGroqError(Exception):
@@ -10,10 +13,42 @@ class _FakeGroqError(Exception):
         self.body = body
 
 
+_TOOL_USE_FAILED = _FakeGroqError({"error": {"code": "tool_use_failed", "failed_generation": "first attempt text"}})
+_OUTPUT_PARSE_FAILED = _FakeGroqError({"error": {"code": "output_parse_failed",
+                                                  "failed_generation": "retry also malformed"}})
+
+
+class _FakeLLM:
+    """A scripted stand-in: `script` has one entry per bind_tools().invoke() call, in order -
+    either an exception to raise or an AIMessage to return."""
+
+    def __init__(self, script: list) -> None:
+        self.script = list(script)
+
+    def bind_tools(self, *_a, **_kw) -> "_FakeLLM":
+        return self
+
+    def invoke(self, _inputs):
+        item = self.script.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+
 def test_tool_use_failed_text_extracts_failed_generation() -> None:
     exc = _FakeGroqError({"error": {"code": "tool_use_failed", "message": "...",
                                      "failed_generation": "The data covers 2012-2015."}})
     assert tool_use_failed_text(exc) == "The data covers 2012-2015."
+
+
+def test_tool_use_failed_text_also_handles_output_parse_failed() -> None:
+    # a sibling error code Groq uses when it emits unparsable text (e.g. stray reasoning) instead
+    # of a valid tool call - same forced-tool_choice situation, same fallback handling.
+    exc = _FakeGroqError({"error": {"code": "output_parse_failed",
+                                     "message": "Parsing failed. The model generated output that could not be "
+                                                "parsed. Please adjust your prompt.",
+                                     "failed_generation": "We need total spend for department ... Submit pipeline."}})
+    assert tool_use_failed_text(exc) == "We need total spend for department ... Submit pipeline."
 
 
 def test_tool_use_failed_text_ignores_other_errors() -> None:
@@ -62,6 +97,34 @@ def test_wants_sample_rows_detects_row_column_requests() -> None:
     assert wants_sample_rows("وش الصفوف والاعمده الموخوده؟")
     assert wants_sample_rows("Can you show me a few sample rows?")
     assert not wants_sample_rows("What date range does this dataset cover?")
+
+
+def test_invoke_forced_tool_succeeds_on_first_try() -> None:
+    call = AIMessage(content="", tool_calls=[{"name": "submit_pipeline", "id": "c1", "args": {}}])
+    llm = _FakeLLM([call])
+    assert invoke_forced_tool(llm, [], "required", []) is call
+
+
+def test_invoke_forced_tool_recovers_via_auto_retry() -> None:
+    call = AIMessage(content="", tool_calls=[{"name": "submit_pipeline", "id": "c1", "args": {}}])
+    llm = _FakeLLM([_TOOL_USE_FAILED, call])
+    assert invoke_forced_tool(llm, [], "required", []) is call
+
+
+def test_invoke_forced_tool_raises_when_the_retry_fails_the_same_way() -> None:
+    # the auto-tool_choice retry can hit the exact same error (e.g. malformed JSON again) - this
+    # must not propagate as a raw, uncaught exception; it becomes a ForcedToolCallFailed instead.
+    llm = _FakeLLM([_TOOL_USE_FAILED, _OUTPUT_PARSE_FAILED])
+    with pytest.raises(ForcedToolCallFailed) as exc_info:
+        invoke_forced_tool(llm, [], "required", [])
+    assert exc_info.value.text == "retry also malformed"
+
+
+def test_invoke_forced_tool_raises_when_retry_calls_no_tool_at_all() -> None:
+    llm = _FakeLLM([_TOOL_USE_FAILED, AIMessage(content="I think the answer is 42.", tool_calls=[])])
+    with pytest.raises(ForcedToolCallFailed) as exc_info:
+        invoke_forced_tool(llm, [], "required", [])
+    assert "42" in exc_info.value.text
 
 
 def test_safe_tool_failure_reply_never_returns_raw_model_text() -> None:

@@ -1,30 +1,118 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Field } from '../api'
+import { FIELD_HELP } from '../fieldHelp'
 
-/** Collection schema reference. */
-export function Sidebar({ fields, health }: { fields: Field[]; health: string }) {
+const STORAGE_KEY = 'sidebarCollapsed'
+
+/** Collection schema reference: filterable field list, collapsible, with per-field example questions. */
+export function Sidebar({
+  fields,
+  health,
+  uiLang,
+  onPickExample,
+}: {
+  fields: Field[]
+  health: string
+  uiLang: 'en' | 'ar'
+  onPickExample: (text: string) => void
+}) {
   const [q, setQ] = useState('')
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const [selected, setSelected] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0')
+    } catch {
+      /* ignore (private browsing, storage disabled, ...) */
+    }
+  }, [collapsed])
+
   const shown = fields.filter((f) => `${f.name} ${f.notes}`.toLowerCase().includes(q.toLowerCase()))
+
+  if (collapsed) {
+    return (
+      <aside className="hidden w-10 shrink-0 flex-col items-center border-r border-navy/10 bg-white py-4 lg:flex">
+        <button
+          onClick={() => setCollapsed(false)}
+          title="Expand sidebar"
+          aria-label="Expand sidebar"
+          className="rounded-full p-1.5 text-navy transition hover:bg-amber/20"
+        >
+          »
+        </button>
+      </aside>
+    )
+  }
+
   return (
-    <aside className="hidden w-72 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
-      <div className="border-b border-slate-200 p-4">
-        <h2 className="text-sm font-semibold">procurement.purchases</h2>
-        <p className="text-xs text-slate-500">{health}</p>
+    <aside className="hidden w-72 shrink-0 flex-col border-r border-navy/10 bg-white lg:flex">
+      <div className="border-b border-navy/10 p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-navy">procurement.purchases</h2>
+          <button
+            onClick={() => setCollapsed(true)}
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+            className="rounded-full p-1 text-navy/50 transition hover:bg-amber/20 hover:text-navy"
+          >
+            «
+          </button>
+        </div>
+        <p className="text-xs text-navy/50">{health}</p>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Filter fields…"
-          className="mt-2 w-full rounded-md border border-slate-200 px-2 py-1 text-xs outline-none focus:border-indigo-400"
+          placeholder={uiLang === 'ar' ? 'بحث في الحقول…' : 'Filter fields…'}
+          dir={uiLang === 'ar' ? 'rtl' : 'ltr'}
+          className="mt-2 w-full rounded-full border border-navy/15 px-3 py-1 text-xs text-navy outline-none focus:border-amber focus:ring-2 focus:ring-amber/30"
         />
       </div>
-      <ul className="flex-1 space-y-2 overflow-y-auto p-4 text-xs">
-        {shown.map((f) => (
-          <li key={f.name}>
-            <span className="font-mono font-medium text-slate-800">{f.name}</span>{' '}
-            <span className="text-indigo-600">{f.type}</span>
-            {f.notes && <p className="text-slate-500">{f.notes}</p>}
-          </li>
-        ))}
+      <ul className="flex-1 space-y-1 overflow-y-auto p-3 text-xs">
+        {shown.map((f) => {
+          const help = FIELD_HELP[f.name]
+          const isOpen = selected === f.name
+          const description = uiLang === 'ar' && help ? help.descriptionAr : f.notes
+          const examples = help ? (uiLang === 'ar' ? help.examples.ar : help.examples.en) : []
+          return (
+            <li key={f.name} className="rounded-lg">
+              <button
+                onClick={() => setSelected(isOpen ? null : f.name)}
+                className={`w-full rounded-lg px-2 py-1.5 text-left transition ${isOpen ? 'bg-amber/15' : 'hover:bg-navy/5'}`}
+              >
+                <div>
+                  <span className="font-mono font-medium text-navy">{f.name}</span>{' '}
+                  <span className="text-teal">{f.type}</span>
+                </div>
+                {description && (
+                  <p dir={uiLang === 'ar' ? 'rtl' : 'ltr'} className="mt-0.5 text-navy/60">
+                    {description}
+                  </p>
+                )}
+              </button>
+              {isOpen && examples.length > 0 && (
+                <div className="mb-1 mt-1 flex flex-col gap-1 px-2">
+                  {examples.map((ex) => (
+                    <button
+                      key={ex}
+                      dir={uiLang === 'ar' ? 'rtl' : 'ltr'}
+                      onClick={() => onPickExample(ex)}
+                      className="rounded-full bg-navy/5 px-2.5 py-1 text-left text-[11px] text-navy transition hover:bg-amber/25"
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </aside>
   )

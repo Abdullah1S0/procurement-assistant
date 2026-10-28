@@ -45,19 +45,30 @@ def understand(state: AgentState) -> dict:
         failed_text = tool_use_failed_text(exc)
         if failed_text is None:
             raise
-        # Groq rejected the forced tool call (model answered in plain text); retry once with
-        # tool_choice="auto", and fall back to that text as a direct reply if it still refuses.
-        ai = invoke_with_backoff(get_llm(fast=True).bind_tools([Understanding], tool_choice="auto"), msgs)
-        call = next((c for c in ai.tool_calls if c["name"] == "Understanding"), None)
-        if call is None:
-            text = ai.content if isinstance(ai.content, str) and ai.content.strip() else failed_text
+
+        def _fallback(text: str) -> dict:
             intent = "meta_question" if looks_like_meta_question(question) else "chit_chat"
-            safe_text = safe_tool_failure_reply(question, language, text or "")
+            safe_text = safe_tool_failure_reply(question, language, text)
             return {
                 "language": language, "intent": intent, "standalone_question": question,
                 "direct_reply": safe_text, "plan": [question], "needs_plan": False,
                 "_event": {"intent": intent, "fallback_text": True},
             }
+
+        # Groq rejected the forced tool call (model answered in plain text); retry once with
+        # tool_choice="auto". That retry can hit the exact same failure again (e.g. malformed
+        # JSON) - don't let it raise uncaught, fall back the same way.
+        try:
+            ai = invoke_with_backoff(get_llm(fast=True).bind_tools([Understanding], tool_choice="auto"), msgs)
+        except Exception as exc2:  # noqa: BLE001
+            retry_failed_text = tool_use_failed_text(exc2)
+            if retry_failed_text is None:
+                raise
+            return _fallback(retry_failed_text)
+        call = next((c for c in ai.tool_calls if c["name"] == "Understanding"), None)
+        if call is None:
+            text = ai.content if isinstance(ai.content, str) and ai.content.strip() else failed_text
+            return _fallback(text or "")
         u = Understanding(**call["args"])
 
     standalone = u.standalone_question.strip() or question

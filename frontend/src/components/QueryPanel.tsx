@@ -11,21 +11,21 @@ export function QueryPanel({ results }: { results: QueryResult[] }) {
   const [open, setOpen] = useState(false)
   if (!results.length) return null
   return (
-    <div className="rounded-lg border border-slate-200 bg-white" dir="ltr">
+    <div className="rounded-lg border border-navy/10 bg-white" dir="ltr">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-navy hover:bg-navy/5"
       >
         <span>
           {open ? '▾' : '▸'} Show query{results.length > 1 ? ` (${results.length} steps)` : ''}
         </span>
-        <span className="text-xs font-normal text-slate-400">
+        <span className="text-xs font-normal text-navy/40">
           db.purchases.aggregate(…)
           {results.some((r) => r.retries) ? ` · ${results.reduce((a, r) => a + r.retries, 0)} self-correction(s)` : ''}
         </span>
       </button>
       {open && (
-        <div className="space-y-3 border-t border-slate-200 p-3">
+        <div className="space-y-3 border-t border-navy/10 p-3">
           {results.map((r, i) => (
             <PipelineBlock key={i} index={i} total={results.length} result={r} />
           ))}
@@ -45,23 +45,23 @@ function PipelineBlock({ result, index, total }: { result: QueryResult; index: n
   }
   return (
     <div>
-      {total > 1 && <p className="mb-1 text-xs font-semibold text-slate-500">Step {index + 1}: {result.question}</p>}
+      {total > 1 && <p className="mb-1 text-xs font-semibold text-navy/60">Step {index + 1}: {result.question}</p>}
       <div className="relative">
         <button
           onClick={copy}
-          className="absolute right-2 top-2 rounded bg-white/90 px-2 py-0.5 text-xs text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100"
+          className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-xs text-navy ring-1 ring-navy/15 hover:bg-amber/20"
         >
           {copied ? 'Copied' : 'Copy'}
         </button>
         <SyntaxHighlighter
           language="json"
           style={github}
-          customStyle={{ margin: 0, borderRadius: 6, fontSize: 12, maxHeight: 320, background: '#f8fafc' }}
+          customStyle={{ margin: 0, borderRadius: 6, fontSize: 12, maxHeight: 320, background: '#f9f0eb' }}
         >
           {code}
         </SyntaxHighlighter>
       </div>
-      {result.error && <p className="mt-1 text-xs text-rose-600">Error: {result.error}</p>}
+      {result.error && <p className="mt-1 text-xs text-error">Error: {result.error}</p>}
     </div>
   )
 }

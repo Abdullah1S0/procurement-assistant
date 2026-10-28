@@ -30,7 +30,17 @@ def plan(state: AgentState) -> dict:
         failed_text = tool_use_failed_text(exc)
         if failed_text is None:
             raise
-        ai = invoke_with_backoff(get_llm().bind_tools([Plan], tool_choice="auto"), msgs)
+        try:
+            ai = invoke_with_backoff(get_llm().bind_tools([Plan], tool_choice="auto"), msgs)
+        except Exception as exc2:  # noqa: BLE001
+            # The auto-tool_choice retry can hit the exact same failure again (e.g. malformed
+            # JSON); don't let it raise uncaught - fall through to the same safe fallback.
+            retry_failed_text = tool_use_failed_text(exc2)
+            if retry_failed_text is None:
+                raise
+            safe_text = safe_tool_failure_reply(question, state.get("language", "en"), retry_failed_text)
+            return {"plan": [question], "step_index": 0, "fallback_answer": safe_text,
+                    "_event": {"steps": [], "fallback_text": True}}
         call = next((c for c in ai.tool_calls if c["name"] == "Plan"), None)
         if call is None:
             text = ai.content if isinstance(ai.content, str) and ai.content.strip() else failed_text
