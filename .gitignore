@@ -9,7 +9,7 @@ mongo-data/
 backend-uvicorn.log
 frontend-vite.log
 
-# local Claude Code settings (machine-specific)
+# local AI coding assistant settings (machine-specific)
 .claude/settings.local.json
 # python
 .venv/
